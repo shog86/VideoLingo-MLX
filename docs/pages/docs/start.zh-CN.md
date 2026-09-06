@@ -67,14 +67,14 @@ VideoLingo提供了多种 tts 接入方式，以下是对比（如不使用配�
 
 1. 前往 [官方的语雀文档](https://www.yuque.com/baicaigongchang1145haoyuangong/ib3g1e/dkxgpiy9zb96hob4#KTvnO) 查看配置要求并下载整合包。
 
-2. 将 `GPT-SoVITS-v2-xxx` 与 `VideoLingo` 放在同一个目录下。**注意是两文件夹并列。**
+2. 将 `GPT-SoVITS-v2-xxx` 与 `VideoLingo-MLX` 放在同一个目录下。**注意是两文件夹并列。**
 
 3. 选择以下任一方式配置模型：
 
    a. 自训练模型：
    - 训练好模型后， `GPT-SoVITS-v2-xxx\GPT_SoVITS\configs` 下的 `tts_infer.yaml` 已自动填写好你的模型地址，将其复制并重命名为 `你喜欢的英文角色名.yaml`
    - 在和 `yaml` 文件同个目录下，放入后续使用的参考音，命名为 `你喜欢的英文角色名_参考音频的文字内容.wav` 或 `.mp3`，例如 `Huanyuv2_你好，这是一条测试音频.wav`
-   - 在 VideoLingo 网页的侧边栏中，将 `GPT-SoVITS 角色` 配置为 `你喜欢的英文角色名`。
+   - 在 VideoLingo-MLX 网页的侧边栏中，将 `GPT-SoVITS 角色` 配置为 `你喜欢的英文角色名`。
 
    b. 使用预训练模型：
    - 从 [这里](https://vip.123pan.cn/1817874751/8137723) 下载我的模型，解压后覆盖到 `GPT-SoVITS-v2-xxx`。
@@ -97,7 +97,7 @@ VideoLingo提供了多种 tts 接入方式，以下是对比（如不使用配�
    ```
    # 期望的目录结构：
    .
-   ├── VideoLingo
+   ├── VideoLingo-MLX
    │   └── ...
    └── GPT-SoVITS-v2-xxx
        ├── GPT_SoVITS
@@ -132,8 +132,8 @@ VideoLingo 支持 Windows、macOS 和 Linux 系统，可使用 CPU 或 GPU 运�
 
 1. 克隆项目：
    ```bash
-   git clone https://github.com/Huanshere/VideoLingo.git
-   cd VideoLingo
+   git clone https://github.com/shog86/VideoLingo-MLX.git
+   cd VideoLingo-MLX
    ```
 
 2. 创建并活虚拟环境（**必须使用 3.10**）：

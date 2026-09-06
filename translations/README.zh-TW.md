@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="/docs/logo.png" alt="VideoLingo Logo" height="140">
+<img src="/docs/logo.png" alt="VideoLingo-MLX Logo" height="140">
 
 # 連結世界，逐格前行
 
@@ -10,9 +10,11 @@
 
 </div>
 
-## 🌟 概述 ([立即體驗 VL！](https://videolingo.io))
+> **ℹ️ VideoLingo-MLX** 是 [**Huanshere/VideoLingo**](https://github.com/Huanshere/VideoLingo)（Apache 2.0）的 fork，專注 **Apple Silicon（MLX）優化**。完整保留上游全部功能，本地優化詳見下方說明。
 
-VideoLingo 是一個全方位的影片翻譯、本地化和配音工具，旨在生成 Netflix 品質的字幕。它消除了機器翻譯的生硬感和多行字幕，同時提供高品質配音，實現跨越語言障礙的全球知識共享。
+## 🌟 概述
+
+VideoLingo-MLX 是 VideoLingo（全方位影片翻譯、本地化和配音工具，旨在生成 Netflix 品質的字幕，消除機器翻譯的生硬感和多行字幕，並提供高品質配音）針對 Mac（Apple Silicon / MLX）優化的分支，實現跨越語言障礙的全球知識共享。
 
 主要功能：
 - 🎥 通過 yt-dlp 下載 YouTube 影片
@@ -77,8 +79,6 @@ https://github.com/user-attachments/assets/47d965b2-b4ab-4a0b-9d08-b49a7bf3508c
 
 ## 安裝
 
-遇到任何問題？在[**這裡**](https://share.fastgpt.in/chat/share?shareId=066w11n3r9aq6879r4z0v9rh)與我們的免費在線 AI 助手聊天以獲取幫助。
-
 > **注意：** Windows 用戶如使用 NVIDIA GPU，請在安裝前執行以下步驟：
 > 1. 安裝 [CUDA Toolkit 12.6](https://developer.download.nvidia.com/compute/cuda/12.6.0/local_installers/cuda_12.6.0_560.76_windows.exe)
 > 2. 安裝 [CUDNN 9.3.0](https://developer.download.nvidia.com/compute/cudnn/9.3.0/local_installers/cudnn_9.3.0_windows.exe)
@@ -93,8 +93,8 @@ https://github.com/user-attachments/assets/47d965b2-b4ab-4a0b-9d08-b49a7bf3508c
 1. 克隆倉庫
 
 ```bash
-git clone https://github.com/Huanshere/VideoLingo.git
-cd VideoLingo
+git clone https://github.com/shog86/VideoLingo-MLX.git
+cd VideoLingo-MLX
 ```
 
 2. 安裝依賴（需要 `python=3.10`）
@@ -120,12 +120,12 @@ docker run -d -p 8501:8501 --gpus all videolingo
 ```
 
 ## APIs
-VideoLingo 支持 OpenAI 格式的 API 和各種 TTS 接口：
+VideoLingo-MLX 支持 OpenAI 格式的 API 和各種 TTS 接口：
 - LLM：`claude-3-5-sonnet`、`gpt-4.1`、`deepseek-v3`、`gemini-2.0-flash`、...（按性能排序，使用 gemini-2.5-flash 時請謹慎...）
 - WhisperX：本地運行 whisperX 或使用 302.ai API
 - TTS：`azure-tts`、`openai-tts`、`siliconflow-fishtts`、**`fish-tts`**、`GPT-SoVITS`、`edge-tts`、`*custom-tts`（您可以在 custom_tts.py 中修改自己的 TTS！）
 
-> **注意：** VideoLingo 與 **[302.ai](https://gpt302.saaslink.net/C2oHR9)** 合作 - 一個 API 密鑰即可使用所有服務（LLM、WhisperX、TTS）。或者使用 Ollama 和 Edge-TTS 在本地免費運行，無需 API！
+> **注意：** VideoLingo-MLX 與 **[302.ai](https://gpt302.saaslink.net/C2oHR9)** 合作 - 一個 API 密鑰即可使用所有服務（LLM、WhisperX、TTS）。或者使用 Ollama 和 Edge-TTS 在本地免費運行，無需 API！
 
 詳細安裝、API 配置和批處理模式說明，請參閱文檔：[English](/docs/pages/docs/start.en-US.md) | [中文](/docs/pages/docs/start.zh-CN.md)
 
@@ -149,14 +149,13 @@ VideoLingo 支持 OpenAI 格式的 API 和各種 TTS 接口：
 
 ## 📬 聯繫我
 
-- 在 GitHub 上提交 [Issues](https://github.com/Huanshere/VideoLingo/issues) 或 [Pull Requests](https://github.com/Huanshere/VideoLingo/pulls)
-- 在 Twitter 上私信我：[@Huanshere](https://twitter.com/Huanshere)
-- 發送郵件至：team@videolingo.io
+- 在 GitHub 上提交 [Issues](https://github.com/shog86/VideoLingo-MLX/issues) 或 [Pull Requests](https://github.com/shog86/VideoLingo-MLX/pulls)
+- 母倉庫：[Huanshere/VideoLingo](https://github.com/Huanshere/VideoLingo)
 
 ## ⭐ Star 歷史
 
-[![Star History Chart](https://api.star-history.com/svg?repos=Huanshere/VideoLingo&type=Timeline)](https://star-history.com/#Huanshere/VideoLingo&Timeline)
+[![Star History Chart](https://api.star-history.com/svg?repos=shog86/VideoLingo-MLX&type=Timeline)](https://star-history.com/#shog86/VideoLingo-MLX&Timeline)
 
 ---
 
-<p align="center">如果您覺得 VideoLingo 有幫助，請給我一個 ⭐️！</p> 
+<p align="center">如果您覺得 VideoLingo-MLX 有幫助，請給我們一個 ⭐️！</p> 

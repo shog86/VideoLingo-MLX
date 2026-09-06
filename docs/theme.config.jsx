@@ -1,12 +1,12 @@
 import { useRouter } from 'next/router'
 import { useConfig } from 'nextra-theme-docs'
 
-const title = 'VideoLingo'
+const title = 'VideoLingo-MLX'
 
 export default {
 	logo: <span>{title}</span>,
 	project: {
-		link: 'https://github.com/Huanshere/VideoLingo',
+		link: 'https://github.com/shog86/VideoLingo-MLX',
 	},
 	footer: {
 		text: <span>{new Date().getFullYear()} © {title}.</span>,

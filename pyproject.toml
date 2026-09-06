@@ -1,7 +1,7 @@
 [project]
-name = "videolingo"
+name = "videolingo-mlx"
 version = "3.0.0"
-description = "Connect the World, Frame by Frame — Mac (Apple Silicon / MLX) optimized fork"
+description = "VideoLingo fork optimized for Mac (Apple Silicon / MLX) — Connect the World, Frame by Frame"
 readme = "README.md"
 requires-python = ">=3.11"  # 3.10 excluded: scipy cp310 wheels fail dlopen on macOS 26+
 license = { file = "LICENSE" }

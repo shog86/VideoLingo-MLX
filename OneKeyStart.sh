@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Connect the World, Frame by Frame - VideoLingo macOS Startup Script
+# Connect the World, Frame by Frame - VideoLingo-MLX macOS Startup Script
 
 # Configuration
 ENV_NAME="videolingo"
@@ -12,7 +12,7 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
-echo -e "${BLUE}🚀 Starting VideoLingo (macOS)...${NC}"
+echo -e "${BLUE}🚀 Starting VideoLingo-MLX (macOS)...${NC}"
 
 # 切换到脚本所在目录(项目根目录),防止从其他路径调用找不到 st.py
 cd "$(dirname "$0")"

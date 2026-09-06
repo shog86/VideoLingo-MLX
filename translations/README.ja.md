@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="/docs/logo.png" alt="VideoLingo Logo" height="140">
+<img src="/docs/logo.png" alt="VideoLingo-MLX Logo" height="140">
 
 # フレームごとに世界をつなぐ
 
@@ -10,9 +10,11 @@
 
 </div>
 
-## 🌟 概要 ([VLを試す！](https://videolingo.io))
+> **ℹ️ VideoLingo-MLX** は [**Huanshere/VideoLingo**](https://github.com/Huanshere/VideoLingo)（Apache 2.0）のフォークで、**Apple Silicon（MLX）最適化**に特化しています。アップストリームの全機能を保持し、ローカルの最適化内容は下記をご覧ください。
 
-VideoLingoは、Netflixクオリティの字幕を生成することを目的とした、オールインワンの動画翻訳、ローカライゼーション、吹き替えツールです。機械的な翻訳や複数行の字幕を排除し、高品質な吹き替えを追加することで、言語の壁を越えた世界的な知識共有を可能にします。
+## 🌟 概要
+
+VideoLingo-MLXは、VideoLingo（Netflixクオリティの字幕を生成することを目的とした、オールインワンの動画翻訳、ローカライゼーション、吹き替えツール）のMac（Apple Silicon / MLX）最適化フォークです。機械的な翻訳や複数行の字幕を排除し、高品質な吹き替えを追加することで、言語の壁を越えた世界的な知識共有を可能にします。
 
 主な機能：
 - 🎥 yt-dlpによるYouTube動画のダウンロード
@@ -77,8 +79,6 @@ https://github.com/user-attachments/assets/47d965b2-b4ab-4a0b-9d08-b49a7bf3508c
 
 ## インストール
 
-問題がありましたか？無料のオンラインAIエージェントと[**こちら**](https://share.fastgpt.in/chat/share?shareId=066w11n3r9aq6879r4z0v9rh)でチャットして支援を受けられます。
-
 > **注意：** NVIDIA GPUを搭載したWindowsユーザーは、インストール前に以下の手順を実行してください：
 > 1. [CUDA Toolkit 12.6](https://developer.download.nvidia.com/compute/cuda/12.6.0/local_installers/cuda_12.6.0_560.76_windows.exe)をインストール
 > 2. [CUDNN 9.3.0](https://developer.download.nvidia.com/compute/cudnn/9.3.0/local_installers/cudnn_9.3.0_windows.exe)をインストール
@@ -93,8 +93,8 @@ https://github.com/user-attachments/assets/47d965b2-b4ab-4a0b-9d08-b49a7bf3508c
 1. リポジトリをクローン
 
 ```bash
-git clone https://github.com/Huanshere/VideoLingo.git
-cd VideoLingo
+git clone https://github.com/shog86/VideoLingo-MLX.git
+cd VideoLingo-MLX
 ```
 
 2. 依存関係のインストール（`python=3.10`が必要）
@@ -120,12 +120,12 @@ docker run -d -p 8501:8501 --gpus all videolingo
 ```
 
 ## API
-VideoLingoはOpenAIライクなAPI形式と様々なTTSインターフェースをサポートしています：
+VideoLingo-MLXはOpenAIライクなAPI形式と様々なTTSインターフェースをサポートしています：
 - LLM: `claude-3-5-sonnet`, `gpt-4.1`, `deepseek-v3`, `gemini-2.0-flash`, ... (パフォーマンス順、gemini-2.5-flashには注意...)
 - WhisperX: ローカルでwhisperXを実行するか302.ai APIを使用
 - TTS: `azure-tts`, `openai-tts`, `siliconflow-fishtts`, **`fish-tts`**, `GPT-SoVITS`, `edge-tts`, `*custom-tts`(custom_tts.pyで独自のTTSを修正可能！)
 
-> **注意：** VideoLingoは**[302.ai](https://gpt302.saaslink.net/C2oHR9)**と連携しています - すべてのサービス（LLM、WhisperX、TTS）に1つのAPIキーで対応。またはOllamaとEdge-TTSを使用してローカルで無料で実行可能で、APIは不要です！
+> **注意：** VideoLingo-MLXは**[302.ai](https://gpt302.saaslink.net/C2oHR9)**と連携しています - すべてのサービス（LLM、WhisperX、TTS）に1つのAPIキーで対応。またはOllamaとEdge-TTSを使用してローカルで無料で実行可能で、APIは不要です！
 
 詳細なインストール方法、API設定、バッチモードの説明については、ドキュメントを参照してください：[English](/docs/pages/docs/start.en-US.md) | [中文](/docs/pages/docs/start.zh-CN.md)
 
@@ -149,14 +149,13 @@ VideoLingoはOpenAIライクなAPI形式と様々なTTSインターフェース�
 
 ## 📬 お問い合わせ
 
-- GitHubで[Issues](https://github.com/Huanshere/VideoLingo/issues)や[Pull Requests](https://github.com/Huanshere/VideoLingo/pulls)を提出
-- Twitter: [@Huanshere](https://twitter.com/Huanshere)でDM
-- メール: team@videolingo.io
+- GitHubで[Issues](https://github.com/shog86/VideoLingo-MLX/issues)や[Pull Requests](https://github.com/shog86/VideoLingo-MLX/pulls)を提出
+- アップストリーム: [Huanshere/VideoLingo](https://github.com/Huanshere/VideoLingo)
 
 ## ⭐ スター履歴
 
-[![Star History Chart](https://api.star-history.com/svg?repos=Huanshere/VideoLingo&type=Timeline)](https://star-history.com/#Huanshere/VideoLingo&Timeline)
+[![Star History Chart](https://api.star-history.com/svg?repos=shog86/VideoLingo-MLX&type=Timeline)](https://star-history.com/#shog86/VideoLingo-MLX&Timeline)
 
 ---
 
-<p align="center">VideoLingoが役立つと感じた場合は、⭐️をお願いします！</p> 
+<p align="center">VideoLingo-MLXが役立つと感じた場合は、⭐️をお願いします！</p> 

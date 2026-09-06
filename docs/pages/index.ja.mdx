@@ -1,13 +1,13 @@
 ---
-title: VideoLingo
+title: VideoLingo-MLX
 ---
 
 import Landing from '@/components/landing'
 
 export const getStaticProps = ({ params }) => {
     return Promise.all([
-        fetch(`https://api.github.com/repos/Huanshere/VideoLingo`).then(res => res.json()),
-        fetch(`https://api.github.com/repos/Huanshere/VideoLingo/contributors?per_page=16`).then(res => res.json())
+        fetch(`https://api.github.com/repos/shog86/VideoLingo-MLX`).then(res => res.json()),
+        fetch(`https://api.github.com/repos/shog86/VideoLingo-MLX/contributors?per_page=16`).then(res => res.json())
     ]).then(([repo, stargazers]) => ({
         props: {
             ssg: {
@@ -22,7 +22,7 @@ export const getStaticProps = ({ params }) => {
 export default function Component() {
     const landingData = {
         hero: {
-            title: "VideoLingo: 世界の一コマ一コマをつなぐ",
+            title: "VideoLingo-MLX: 世界の一コマ一コマをつなぐ",
             description: "Netflixレベルの字幕分割、翻訳、同期、さらに吹き替えまで、ワンクリックで全自動の動画翻訳AIチーム",
             videoSrc: "/videos/demo.mp4"
         },
@@ -62,7 +62,7 @@ export default function Component() {
             ]
         },
         comments: {
-            title: "VideoLingoユーザーの声",
+            title: "VideoLingo-MLXユーザーの声",
             items: [
                 {
                     content: "以前は1日かかっていたことが、今では1時間で完了します！",
@@ -94,7 +94,7 @@ export default function Component() {
                 },
                 {
                     question: "料金はどうなっていますか？",
-                    answer: "VideoLingoはオープンソースプロジェクトで、すでにGitHubで3k以上のスターを獲得しています。商用版の発表が間もなく予定されており、さらに多くの機能が追加される予定です。"
+                    answer: "VideoLingo-MLXはVideoLingoのオープンソースフォークで、すでにGitHubで良好なコミュニティ評価を得ています。さらなる機能が近日公開予定です。"
                 },
             ]
         }

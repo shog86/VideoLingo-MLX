@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="/docs/logo.png" alt="VideoLingo Logo" height="140">
+<img src="/docs/logo.png" alt="VideoLingo-MLX Logo" height="140">
 
 # Conectando el Mundo, Cuadro por Cuadro
 
@@ -10,9 +10,11 @@
 
 </div>
 
-## 🌟 Descripción General ([¡Prueba VL Gratis!](https://videolingo.io))
+> **ℹ️ VideoLingo-MLX** es un fork de [**Huanshere/VideoLingo**](https://github.com/Huanshere/VideoLingo) (Apache 2.0), enfocado en la **optimización para Apple Silicon (MLX)**. Todas las funciones originales se conservan; nuestras optimizaciones locales se detallan a continuación.
 
-VideoLingo es una herramienta todo en uno para traducción, localización y doblaje de videos, diseñada para generar subtítulos de calidad Netflix. Elimina las traducciones mecánicas y los subtítulos de múltiples líneas mientras agrega doblaje de alta calidad, permitiendo compartir conocimiento globalmente a través de las barreras del idioma.
+## 🌟 Descripción General
+
+VideoLingo-MLX es un fork de VideoLingo (herramienta todo en uno para traducción, localización y doblaje de videos, diseñada para generar subtítulos de calidad Netflix) optimizado para Mac (Apple Silicon / MLX). Elimina las traducciones mecánicas y los subtítulos de múltiples líneas mientras agrega doblaje de alta calidad, permitiendo compartir conocimiento globalmente a través de las barreras del idioma.
 
 Características principales:
 - 🎥 Descarga de videos de YouTube mediante yt-dlp
@@ -77,8 +79,6 @@ https://github.com/user-attachments/assets/47d965b2-b4ab-4a0b-9d08-b49a7bf3508c
 
 ## Instalación
 
-¿Tienes algún problema? Chatea con nuestro agente de IA en línea gratuito [**aquí**](https://share.fastgpt.in/chat/share?shareId=066w11n3r9aq6879r4z0v9rh) para ayudarte.
-
 > **Nota:** Para usuarios de Windows con GPU NVIDIA, sigue estos pasos antes de la instalación:
 > 1. Instala [CUDA Toolkit 12.6](https://developer.download.nvidia.com/compute/cuda/12.6.0/local_installers/cuda_12.6.0_560.76_windows.exe)
 > 2. Instala [CUDNN 9.3.0](https://developer.download.nvidia.com/compute/cudnn/9.3.0/local_installers/cudnn_9.3.0_windows.exe)
@@ -93,8 +93,8 @@ https://github.com/user-attachments/assets/47d965b2-b4ab-4a0b-9d08-b49a7bf3508c
 1. Clona el repositorio
 
 ```bash
-git clone https://github.com/Huanshere/VideoLingo.git
-cd VideoLingo
+git clone https://github.com/shog86/VideoLingo-MLX.git
+cd VideoLingo-MLX
 ```
 
 2. Instala las dependencias (requiere `python=3.10`)
@@ -120,12 +120,12 @@ docker run -d -p 8501:8501 --gpus all videolingo
 ```
 
 ## APIs
-VideoLingo admite formato de API similar a OpenAI y varias interfaces TTS:
+VideoLingo-MLX admite formato de API similar a OpenAI y varias interfaces TTS:
 - LLM: `claude-3-5-sonnet`, `gpt-4.1`, `deepseek-v3`, `gemini-2.0-flash`, ... (ordenados por rendimiento, ten cuidado con gemini-2.5-flash...)
 - WhisperX: Ejecuta whisperX localmente o usa la API de 302.ai
 - TTS: `azure-tts`, `openai-tts`, `siliconflow-fishtts`, **`fish-tts`**, `GPT-SoVITS`, `edge-tts`, `*custom-tts`(¡Puedes modificar tu propio TTS en custom_tts.py!)
 
-> **Nota:** VideoLingo funciona con **[302.ai](https://gpt302.saaslink.net/C2oHR9)** - una clave API para todos los servicios (LLM, WhisperX, TTS). ¡O ejecútalo localmente con Ollama y Edge-TTS gratis, sin necesidad de API!
+> **Nota:** VideoLingo-MLX funciona con **[302.ai](https://gpt302.saaslink.net/C2oHR9)** - una clave API para todos los servicios (LLM, WhisperX, TTS). ¡O ejecútalo localmente con Ollama y Edge-TTS gratis, sin necesidad de API!
 
 Para instrucciones detalladas de instalación, configuración de API y modo por lotes, consulta la documentación: [English](/docs/pages/docs/start.en-US.md) | [中文](/docs/pages/docs/start.zh-CN.md)
 
@@ -149,14 +149,13 @@ Este proyecto está licenciado bajo la Licencia Apache 2.0. Un agradecimiento es
 
 ## 📬 Contáctame
 
-- Envía [Issues](https://github.com/Huanshere/VideoLingo/issues) o [Pull Requests](https://github.com/Huanshere/VideoLingo/pulls) en GitHub
-- Envíame un DM en Twitter: [@Huanshere](https://twitter.com/Huanshere)
-- Envíame un correo a: team@videolingo.io
+- Envía [Issues](https://github.com/shog86/VideoLingo-MLX/issues) o [Pull Requests](https://github.com/shog86/VideoLingo-MLX/pulls) en GitHub
+- Proyecto original: [Huanshere/VideoLingo](https://github.com/Huanshere/VideoLingo)
 
 ## ⭐ Historial de Estrellas
 
-[![Star History Chart](https://api.star-history.com/svg?repos=Huanshere/VideoLingo&type=Timeline)](https://star-history.com/#Huanshere/VideoLingo&Timeline)
+[![Star History Chart](https://api.star-history.com/svg?repos=shog86/VideoLingo-MLX&type=Timeline)](https://star-history.com/#shog86/VideoLingo-MLX&Timeline)
 
 ---
 
-<p align="center">Si encuentras útil VideoLingo, ¡por favor dame una ⭐️!</p> 
+<p align="center">Si encuentras útil VideoLingo-MLX, ¡por favor danos una ⭐️!</p> 

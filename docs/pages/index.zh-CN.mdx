@@ -1,13 +1,13 @@
 ---
-title: VideoLingo
+title: VideoLingo-MLX
 ---
 
 import Landing from '@/components/landing'
 
 export const getStaticProps = async ({ params }) => {
     const [repo, stargazers] = await Promise.all([
-        fetch(`https://api.github.com/repos/Huanshere/VideoLingo`).then(res => res.json()),
-        fetch(`https://api.github.com/repos/Huanshere/VideoLingo/contributors?per_page=16`).then(res => res.json())
+        fetch(`https://api.github.com/repos/shog86/VideoLingo-MLX`).then(res => res.json()),
+        fetch(`https://api.github.com/repos/shog86/VideoLingo-MLX/contributors?per_page=16`).then(res => res.json())
     ]);
 
     return {
@@ -24,7 +24,7 @@ export const getStaticProps = async ({ params }) => {
 export default function Component() {
     const landingData = {
         hero: {
-            title: "VideoLingo: 连接世界的每一帧",
+            title: "VideoLingo-MLX: 连接世界的每一帧",
             description: "Netflix级字幕切割、翻译、对齐、甚至加上配音，一键全自动视频搬运AI字幕组",
             videoSrc: "/videos/demo.mp4"
         },
@@ -64,7 +64,7 @@ export default function Component() {
             ]
         },
         comments: {
-            title: "他们都在用 VideoLingo",
+            title: "他们都在用 VideoLingo-MLX",
             items: [
                 {
                     content: "之前要弄一整天，现在一个小时就弄完了！",
@@ -96,7 +96,7 @@ export default function Component() {
                 },
                 {
                     question: "如何收费呢？",
-                    answer: "VideoLingo是开源项目，已经在Github上获得3k+ stars，即将推出商业版，会带来更多功能~"
+                    answer: "VideoLingo-MLX 是 VideoLingo 的开源分支，已在 GitHub 上获得良好社区口碑，更多功能即将推出~"
                 },
             ]
         }

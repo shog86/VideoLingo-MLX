@@ -37,4 +37,4 @@ def fish_tts(text: str, save_as: str) -> bool:
     return False
 
 if __name__ == '__main__':
-    fish_tts("Hi! Welcome to VideoLingo!", "test.wav")
+    fish_tts("Hi! Welcome to VideoLingo-MLX!", "test.wav")

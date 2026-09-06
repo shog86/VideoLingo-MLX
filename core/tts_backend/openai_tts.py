@@ -36,4 +36,4 @@ def openai_tts(text, save_path):
         print(response.text)
 
 if __name__ == "__main__":
-    openai_tts("Hi! Welcome to VideoLingo!", "test.wav")
+    openai_tts("Hi! Welcome to VideoLingo-MLX!", "test.wav")

@@ -15,7 +15,7 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 os.environ['PATH'] += os.pathsep + current_dir
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-st.set_page_config(page_title="VideoLingo", page_icon="docs/logo.svg")
+st.set_page_config(page_title="VideoLingo-MLX", page_icon="docs/logo.svg")
 
 SUB_VIDEO = "output/output_sub.mp4"
 DUB_VIDEO = "output/output_dub.mp4"
@@ -360,7 +360,7 @@ def main():
     with logo_col:
         st.image("docs/logo.png", use_column_width=True)
     st.markdown(THEME_CSS, unsafe_allow_html=True)
-    welcome_text = t("Hello, welcome to VideoLingo. If you encounter any issues, feel free to get instant answers with our Free QA Agent <a href=\"https://share.fastgpt.in/chat/share?shareId=066w11n3r9aq6879r4z0v9rh\" target=\"_blank\">here</a>! You can also try out our SaaS website at <a href=\"https://videolingo.io\" target=\"_blank\">videolingo.io</a> for free!")
+    welcome_text = t("Hello, welcome to VideoLingo-MLX. If you encounter any issues, please report them via GitHub Issues.")
     st.markdown(f"<p style='color: #78716c;'>{welcome_text}</p>", unsafe_allow_html=True)
     with st.sidebar:
         page_setting()

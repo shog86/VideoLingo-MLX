@@ -67,14 +67,14 @@ Go to the [official website](https://fish.audio/en/) to listen and choose voices
 
 1. Check requirements and download the package from [official Yuque docs](https://www.yuque.com/baicaigongchang1145haoyuangong/ib3g1e/dkxgpiy9zb96hob4#KTvnO).
 
-2. Place `GPT-SoVITS-v2-xxx` and `VideoLingo` in the same directory. **Note they should be parallel folders.**
+2. Place `GPT-SoVITS-v2-xxx` and `VideoLingo-MLX` in the same directory. **Note they should be parallel folders.**
 
 3. Choose one of the following ways to configure the model:
 
    a. Self-trained model:
    - After training, `tts_infer.yaml` under `GPT-SoVITS-v2-xxx\GPT_SoVITS\configs` will have your model path auto-filled. Copy and rename it to `your_preferred_english_character_name.yaml`
    - In the same directory as the `yaml` file, place reference audio named `your_preferred_english_character_name_reference_audio_text.wav` or `.mp3`, e.g. `Huanyuv2_Hello, this is a test audio.wav`
-   - In VideoLingo's sidebar, set `GPT-SoVITS Character` to `your_preferred_english_character_name`.
+   - In VideoLingo-MLX's sidebar, set `GPT-SoVITS Character` to `your_preferred_english_character_name`.
 
    b. Use pre-trained model:
    - Download my model from [here](https://vip.123pan.cn/1817874751/8137723), extract and overwrite to `GPT-SoVITS-v2-xxx`.
@@ -97,7 +97,7 @@ Go to the [official website](https://fish.audio/en/) to listen and choose voices
    ```
    # Expected directory structure:
    .
-   ├── VideoLingo
+   ├── VideoLingo-MLX
    │   └── ...
    └── GPT-SoVITS-v2-xxx
        ├── GPT_SoVITS
@@ -132,8 +132,8 @@ Before installing VideoLingo, ensure you have installed Git and Anaconda.
 
 1. Clone the project:
    ```bash
-   git clone https://github.com/Huanshere/VideoLingo.git
-   cd VideoLingo
+   git clone https://github.com/shog86/VideoLingo-MLX.git
+   cd VideoLingo-MLX
    ```
 
 2. Create and activate virtual environment (**must be python=3.10.0**):

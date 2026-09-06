@@ -49,7 +49,7 @@ give_star_button = """
         color: #1c1917;
     }
 </style>
-<a href="https://github.com/Huanshere/VideoLingo" target="_blank" style="text-decoration: none;">
+<a href="https://github.com/shog86/VideoLingo-MLX" target="_blank" style="text-decoration: none;">
     <div class="github-button">
         Star on GitHub 🌟
     </div>

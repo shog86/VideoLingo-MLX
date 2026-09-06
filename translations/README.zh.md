@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="/docs/logo.png" alt="VideoLingo Logo" height="140">
+<img src="/docs/logo.png" alt="VideoLingo-MLX Logo" height="140">
 
 # 连接世界每一帧
 
@@ -12,9 +12,11 @@
 
 </div>
 
-## 🌟 简介（[在线体验！](https://videolingo.io)）
+> **ℹ️ VideoLingo-MLX** 是 [**Huanshere/VideoLingo**](https://github.com/Huanshere/VideoLingo)（Apache 2.0）的 fork，专注 **Apple Silicon（MLX）优化**。完整保留上游全部功能，本地优化详见 [VideoLingo-MLX 优化](#-videolingo-mlx-优化)。
 
-VideoLingo 是一站式视频翻译本地化配音工具，能够一键生成 Netflix 级别的高质量字幕，告别生硬机翻，告别多行字幕，还能加上高质量的克隆配音，让全世界的知识能够跨越语言的障碍共享。
+## 🌟 简介
+
+VideoLingo-MLX 是 VideoLingo（一站式视频翻译本地化配音工具，能够一键生成 Netflix 级别的高质量字幕，告别生硬机翻、告别多行字幕，还能加上高质量的克隆配音）针对 Mac（Apple Silicon / MLX）优化的分支，让全世界的知识能够跨越语言的障碍共享。
 
 主要特点和功能：
 - 🎥 使用 yt-dlp 从 Youtube 链接下载视频
@@ -85,9 +87,17 @@ https://github.com/user-attachments/assets/47d965b2-b4ab-4a0b-9d08-b49a7bf3508c
 - **安装增强**：`install.py` 现已支持在安装阶段预下载重型 AI 模型。
 - **兼容性修复**：全面支持 Python 3.13 并修复了 Demucs/Spacy 的安装冲突。
 
-## 安装
+## ⚡ VideoLingo-MLX 优化
 
-遇到问题？在[**这里**](https://share.fastgpt.in/chat/share?shareId=066w11n3r9aq6879r4z0v9rh)与我们的免费在线AI助手交流获取帮助。
+在母仓库 [Huanshere/VideoLingo](https://github.com/Huanshere/VideoLingo) 基础上的本地改动：
+
+- **MLX-Whisper 本地后端**：新增 `core/asr_backend/mlx_whisper_local.py`，在 Apple Silicon 上走本地 MLX-Whisper 识别流水线（`tests/test_mlx_whisper.py`），不依赖云端。
+- **uv 安装器**：改用 `uv` 管理依赖（`uv.lock`、`run_installer.sh`、`OneKeyStart.sh`），精简 `install.py`；移除旧的 Docker/launcher 路径。
+- **重写 Streamlit 入口**：`st.py` 使用 pydub 处理音频、支持阶段进度恢复与「字幕/配音」双 Tab 布局。
+- **新增验证套件**：`tests/test_diarization.py`、`tests/test_fix_translation_again.py`、`tests/test_performance.py`、`tests/verify_video_params.py`。
+- **i18n 重做**：刷新翻译表（`translations/*.json`、`translations/translations.py`）并支持繁体中文。
+
+## 安装
 
 > **注意:** 在 Windows 上使用 NVIDIA GPU 加速需要先完成以下步骤:
 > 1. 安装 [CUDA Toolkit 12.6](https://developer.download.nvidia.com/compute/cuda/12.6.0/local_installers/cuda_12.6.0_560.76_windows.exe)
@@ -103,8 +113,8 @@ https://github.com/user-attachments/assets/47d965b2-b4ab-4a0b-9d08-b49a7bf3508c
 1. 克隆仓库
 
 ```bash
-git clone https://github.com/Huanshere/VideoLingo.git
-cd VideoLingo
+git clone https://github.com/shog86/VideoLingo-MLX.git
+cd VideoLingo-MLX
 ```
 
 2. 安装依赖（需要 `python>=3.10`）
@@ -139,7 +149,7 @@ docker run -d -p 8501:8501 --gpus all videolingo
 - Whisper: 在 Mac 上推荐使用本地 MLX-Whisper，或使用 ElevenLabs ASR API
 - TTS: `azure-tts`, `openai-tts`, `siliconflow-fishtts`, **`fish-tts`**, `GPT-SoVITS`, `edge-tts`, `*custom-tts`(你可以在 custom_tts.py 中自定义 TTS!)
 
-> **注意：** VideoLingo 现已与 **[302.ai](https://gpt302.saaslink.net/C2oHR9)** 集成，**一个 API KEY** 即可同时支持 LLM、WhisperX 和 TTS！同时也支持完全本地部署，使用 Ollama 作为 LLM 和 Edge-TTS 作为配音，无需云端 API！
+> **注意：** VideoLingo-MLX 现已与 **[302.ai](https://gpt302.saaslink.net/C2oHR9)** 集成，**一个 API KEY** 即可同时支持 LLM、WhisperX 和 TTS！同时也支持完全本地部署，使用 Ollama 作为 LLM 和 Edge-TTS 作为配音，无需云端 API！
 
 > **重要：** 为了进行多角色识别，你必须：
 > 1. 创建一个 [Hugging Face Access Token](https://hf.co/settings/tokens)。
@@ -163,10 +173,9 @@ docker run -d -p 8501:8501 --gpus all videolingo
 ## 📬 联系
 
 - 加入 QQ 群寻求解答：875297969
-- 在 GitHub 上提交 [Issues](https://github.com/Huanshere/VideoLingo/issues) 或 [Pull Requests](https://github.com/Huanshere/VideoLingo/pulls)
-- 关注我的 Twitter：[@Huanshere](https://twitter.com/Huanshere)
-- 联系邮箱：team@videolingo.io
+- 在 GitHub 上提交 [Issues](https://github.com/shog86/VideoLingo-MLX/issues) 或 [Pull Requests](https://github.com/shog86/VideoLingo-MLX/pulls)
+- 母仓库：[Huanshere/VideoLingo](https://github.com/Huanshere/VideoLingo)
 
 ## ⭐ Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=Huanshere/VideoLingo&type=Timeline)](https://star-history.com/#Huanshere/VideoLingo&Timeline)
+[![Star History Chart](https://api.star-history.com/svg?repos=shog86/VideoLingo-MLX&type=Timeline)](https://star-history.com/#shog86/VideoLingo-MLX&Timeline)

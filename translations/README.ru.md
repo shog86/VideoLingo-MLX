@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="/docs/logo.png" alt="VideoLingo Logo" height="140">
+<img src="/docs/logo.png" alt="VideoLingo-MLX Logo" height="140">
 
 # Объединяя Мир, Кадр за Кадром
 
@@ -10,9 +10,11 @@
 
 </div>
 
-## 🌟 Обзор ([Попробуйте VL бесплатно!](https://videolingo.io))
+> **ℹ️ VideoLingo-MLX** — это форк [**Huanshere/VideoLingo**](https://github.com/Huanshere/VideoLingo) (Apache 2.0), оптимизированный для **Apple Silicon (MLX)**. Все функции оригинала сохранены.
 
-VideoLingo - это универсальный инструмент для перевода, локализации и дубляжа видео, направленный на создание субтитров качества Netflix. Он устраняет механические переводы и многострочные субтитры, добавляя высококачественный дубляж, что позволяет делиться знаниями по всему миру, преодолевая языковые барьеры.
+## 🌟 Обзор
+
+VideoLingo-MLX - это форк VideoLingo (универсального инструмента для перевода, локализации и дубляжа видео, направленного на создание субтитров качества Netflix), оптимизированный для Mac (Apple Silicon / MLX). Он устраняет механические переводы и многострочные субтитры, добавляя высококачественный дубляж, что позволяет делиться знаниями по всему миру, преодолевая языковые барьеры.
 
 Ключевые особенности:
 - 🎥 Загрузка видео с YouTube через yt-dlp
@@ -77,8 +79,6 @@ https://github.com/user-attachments/assets/47d965b2-b4ab-4a0b-9d08-b49a7bf3508c
 
 ## Установка
 
-Возникли проблемы? Общайтесь с нашим бесплатным онлайн ИИ-агентом [**здесь**](https://share.fastgpt.in/chat/share?shareId=066w11n3r9aq6879r4z0v9rh), который поможет вам.
-
 > **Примечание:** Для пользователей Windows с GPU NVIDIA выполните следующие шаги перед установкой:
 > 1. Установите [CUDA Toolkit 12.6](https://developer.download.nvidia.com/compute/cuda/12.6.0/local_installers/cuda_12.6.0_560.76_windows.exe)
 > 2. Установите [CUDNN 9.3.0](https://developer.download.nvidia.com/compute/cudnn/9.3.0/local_installers/cudnn_9.3.0_windows.exe)
@@ -93,8 +93,8 @@ https://github.com/user-attachments/assets/47d965b2-b4ab-4a0b-9d08-b49a7bf3508c
 1. Клонируйте репозиторий
 
 ```bash
-git clone https://github.com/Huanshere/VideoLingo.git
-cd VideoLingo
+git clone https://github.com/shog86/VideoLingo-MLX.git
+cd VideoLingo-MLX
 ```
 
 2. Установите зависимости (требуется `python=3.10`)
@@ -120,12 +120,12 @@ docker run -d -p 8501:8501 --gpus all videolingo
 ```
 
 ## API
-VideoLingo поддерживает формат API, подобный OpenAI, и различные интерфейсы TTS:
+VideoLingo-MLX поддерживает формат API, подобный OpenAI, и различные интерфейсы TTS:
 - LLM: `claude-3-5-sonnet`, `gpt-4.1`, `deepseek-v3`, `gemini-2.0-flash`, ... (отсортировано по производительности, будьте осторожны с gemini-2.5-flash...)
 - WhisperX: Запускайте whisperX локально или используйте API 302.ai
 - TTS: `azure-tts`, `openai-tts`, `siliconflow-fishtts`, **`fish-tts`**, `GPT-SoVITS`, `edge-tts`, `*custom-tts`(Вы можете модифицировать свой собственный TTS в custom_tts.py!)
 
-> **Примечание:** VideoLingo работает с **[302.ai](https://gpt302.saaslink.net/C2oHR9)** - один API-ключ для всех сервисов (LLM, WhisperX, TTS). Или запускайте локально с Ollama и Edge-TTS бесплатно, без необходимости в API!
+> **Примечание:** VideoLingo-MLX работает с **[302.ai](https://gpt302.saaslink.net/C2oHR9)** - один API-ключ для всех сервисов (LLM, WhisperX, TTS). Или запускайте локально с Ollama и Edge-TTS бесплатно, без необходимости в API!
 
 Для подробных инструкций по установке, настройке API и пакетному режиму обратитесь к документации: [English](/docs/pages/docs/start.en-US.md) | [中文](/docs/pages/docs/start.zh-CN.md)
 

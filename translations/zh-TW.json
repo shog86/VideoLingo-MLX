@@ -83,7 +83,7 @@
     "Merge dubbing to the video": "將配音合併到影片中",
     "will use GPU acceleration (VideoToolbox).": "將使用 GPU 加速 (VideoToolbox)。",
     "Audio processing complete! 🎇": "音頻處理完成! 🎇",
-    "Hello, welcome to VideoLingo. If you encounter any issues, feel free to get instant answers with our Free QA Agent <a href=\"https://share.fastgpt.in/chat/share?shareId=066w11n3r9aq6879r4z0v9rh\" target=\"_blank\">here</a>! You can also try out our SaaS website at <a href=\"https://videolingo.io\" target=\"_blank\">videolingo.io</a> for free!": "歡迎來到VideoLingo。如果遇到任何問題，隨時可以透過我們的免費問答助手 <a href=\"https://share.fastgpt.in/chat/share?shareId=066w11n3r9aq6879r4z0v9rh\" target=\"_blank\">here</a> 獲取即時解答！還可以免費試用我們的SaaS網站 <a href=\"https://videolingo.io\" target=\"_blank\">videolingo.io</a>！",
+    "Hello, welcome to VideoLingo-MLX. If you encounter any issues, please report them via GitHub Issues.": "歡迎來到 VideoLingo-MLX。如果遇到任何問題，請通過 GitHub Issues 回報。",
     "WhisperX Runtime": "Whisper 運行環境",
     "Whisper Runtime": "Whisper 運行環境",
     "MLX is highly recommended for Apple Silicon (M1/M2/M3).": "強烈建議 Apple Silicon (M1/M2/M3) 用戶使用 MLX 模式。",

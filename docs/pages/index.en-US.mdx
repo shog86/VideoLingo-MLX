@@ -1,13 +1,13 @@
 ---
-title: VideoLingo
+title: VideoLingo-MLX
 ---
 
 import Landing from '@/components/landing'
 
 export const getStaticProps = ({ params }) => {
     return Promise.all([
-        fetch(`https://api.github.com/repos/Huanshere/VideoLingo`).then(res => res.json()),
-        fetch(`https://api.github.com/repos/Huanshere/VideoLingo/contributors?per_page=16`).then(res => res.json())
+        fetch(`https://api.github.com/repos/shog86/VideoLingo-MLX`).then(res => res.json()),
+        fetch(`https://api.github.com/repos/shog86/VideoLingo-MLX/contributors?per_page=16`).then(res => res.json())
     ]).then(([repo, stargazers]) => ({
         props: {
             ssg: {
@@ -22,7 +22,7 @@ export const getStaticProps = ({ params }) => {
 export default function Component() {
     const landingData = {
         hero: {
-            title: "VideoLingo: Connecting Every Frame Across the World",
+            title: "VideoLingo-MLX: Connecting Every Frame Across the World",
             description: "Netflix-level subtitle cutting, translation, alignment, and even dubbing - one-click fully automated video localization AI subtitle team",
             videoSrc: "/videos/demo.mp4"
         },
@@ -62,7 +62,7 @@ export default function Component() {
             ]
         },
         comments: {
-            title: "They're All Using VideoLingo",
+            title: "They're All Using VideoLingo-MLX",
             items: [
                 {
                     content: "What used to take a whole day now gets done in an hour!",
@@ -94,7 +94,7 @@ export default function Component() {
                 },
                 {
                     question: "How is it priced?",
-                    answer: "VideoLingo is an open-source project that has already gained 3k+ stars on Github. A commercial version with more features is coming soon~"
+                    answer: "VideoLingo-MLX is an open-source fork of VideoLingo that has already gained a strong community. More features are coming soon~"
                 },
             ]
         }

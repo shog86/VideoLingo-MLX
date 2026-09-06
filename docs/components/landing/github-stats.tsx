@@ -24,7 +24,7 @@ export default function GitHubStats({ stars, recentStargazers }) {
 							</svg>
 							<span className="text-2xl font-semibold">{stars} Stars</span>
 						</div>
-						<Link target="_blank" href="https://github.com/Huanshere/VideoLingo">
+						<Link target="_blank" href="https://github.com/shog86/VideoLingo-MLX">
 							<Button>Star on GitHub</Button>
 						</Link>
 					</div>

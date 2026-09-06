@@ -21,4 +21,4 @@ def azure_tts(text: str, save_path: str) -> None:
     print(f"Audio saved to {save_path}")
 
 if __name__ == "__main__":
-    azure_tts("Hi! Welcome to VideoLingo!", "test.wav")
+    azure_tts("Hi! Welcome to VideoLingo-MLX!", "test.wav")

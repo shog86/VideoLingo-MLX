@@ -1,6 +1,8 @@
-# VideoLingo: Connecting the World, Frame by Frame
+# VideoLingo-MLX: Connecting the World, Frame by Frame
 
-## 🌟 Overview ([Try VideoLingo Now!](https://videolingo.io))
+## 🌟 Overview
+
+**VideoLingo-MLX** is a fork of [**Huanshere/VideoLingo**](https://github.com/Huanshere/VideoLingo) (Apache 2.0), focused on **Apple Silicon (MLX) optimization**. Upstream features are fully preserved, and our local optimizations are listed below.
 
 VideoLingo is an all-in-one video translation, localization, and dubbing tool aimed at generating Netflix-quality subtitles. It eliminates stiff machine translations and multi-line subtitles while adding high-quality dubbing, enabling global knowledge sharing across language barriers.
 
@@ -71,8 +73,8 @@ https://github.com/user-attachments/assets/47d965b2-b4ab-4a0b-9d08-b49a7bf3508c
 1. Clone the repository
 
 ```bash
-git clone https://github.com/Huanshere/VideoLingo.git
-cd VideoLingo
+git clone https://github.com/shog86/VideoLingo-MLX.git
+cd VideoLingo-MLX
 ```
 
 2. Install dependencies(requires `python=3.10`)
@@ -125,14 +127,13 @@ This project is licensed under the Apache 2.0 License. Special thanks to the fol
 ## 📬 Contact Us
 
 - Join our Discord: https://discord.gg/9F2G92CWPp
-- Submit [Issues](https://github.com/Huanshere/VideoLingo/issues) or [Pull Requests](https://github.com/Huanshere/VideoLingo/pulls) on GitHub
-- Follow me on Twitter: [@Huanshere](https://twitter.com/Huanshere)
-- Email me at: team@videolingo.io
+- Submit [Issues](https://github.com/shog86/VideoLingo-MLX/issues) or [Pull Requests](https://github.com/shog86/VideoLingo-MLX/pulls) on GitHub
+- Upstream project: [Huanshere/VideoLingo](https://github.com/Huanshere/VideoLingo)
 
 ## ⭐ Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=Huanshere/VideoLingo&type=Timeline)](https://star-history.com/#Huanshere/VideoLingo&Timeline)
+[![Star History Chart](https://api.star-history.com/svg?repos=shog86/VideoLingo-MLX&type=Timeline)](https://star-history.com/#shog86/VideoLingo-MLX&Timeline)
 
 ---
 
-<p align="center">If you find VideoLingo helpful, please give us a ⭐️!</p>
+<p align="center">If you find VideoLingo-MLX helpful, please give us a ⭐️!</p>

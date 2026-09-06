@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-NAME = 'VideoLingo'
+NAME = 'VideoLingo-MLX'
 VERSION = '3.0.0'
 
 with open('requirements.txt', encoding='utf-8') as f:
