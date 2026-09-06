@@ -3,6 +3,12 @@ import platform
 import subprocess
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
+# 同 run_installer.sh:父 shell 可能没有 Homebrew 路径(如 GUI 启动的终端),
+# 在导入 pydub 等子流程之前先把 PATH 补上,否则一启动就报找不到 ffmpeg。
+for _bin in ("/opt/homebrew/bin", "/usr/local/bin"):
+    if os.path.isdir(_bin) and _bin not in os.environ.get("PATH", "").split(os.pathsep):
+        os.environ["PATH"] = _bin + os.pathsep + os.environ.get("PATH", "")
+
 ascii_logo = r"""
 __     ___     _            _     _
 \ \   / (_) __| | ___  ___ | |   (_)_ __   __ _  ___
@@ -17,29 +23,46 @@ def install_package(*packages):
 
 # Removed check_nvidia_gpu for Mac-only version
 
+def _find_ffmpeg():
+    """Locate ffmpeg even when Homebrew's bin dir is missing from PATH
+    (common when the installer is launched from a GUI app / non-login shell
+    on macOS — `ffmpeg` exists at /opt/homebrew/bin/ffmpeg but
+    `shutil.which('ffmpeg')` returns None)."""
+    import shutil
+    found = shutil.which("ffmpeg")
+    if found:
+        return found
+    for candidate in ("/opt/homebrew/bin/ffmpeg", "/usr/local/bin/ffmpeg"):
+        if os.path.exists(candidate) and os.access(candidate, os.X_OK):
+            return candidate
+    return None
+
 def check_ffmpeg():
     from rich.console import Console
     from rich.panel import Panel
     from translations.translations import translate as t
     console = Console()
 
-    try:
-        # Check if ffmpeg is installed
-        subprocess.run(['ffmpeg', '-version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
-        console.print(Panel(t("✅ FFmpeg is already installed"), style="green"))
+    found = _find_ffmpeg()
+    if found:
+        # Make sure child processes (pydub, streamlit launch below) can see it
+        bin_dir = os.path.dirname(found)
+        if bin_dir and bin_dir not in os.environ.get("PATH", ""):
+            os.environ["PATH"] = bin_dir + os.pathsep + os.environ.get("PATH", "")
+        console.print(Panel(t("✅ FFmpeg is already installed") + f" ({found})", style="green"))
         return True
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        install_cmd = "brew install ffmpeg"
-        extra_note = t("Install Homebrew first (https://brew.sh/)")
-        
-        console.print(Panel.fit(
-            t("❌ FFmpeg not found\n\n") +
-            f"{t('🛠️ Install using:')}\n[bold cyan]{install_cmd}[/bold cyan]\n\n" +
-            f"{t('💡 Note:')}\n{extra_note}\n\n" +
-            f"{t('🔄 After installing FFmpeg, please run this installer again:')}\n[bold cyan]bash run_installer.sh[/bold cyan]",
-            style="red"
-        ))
-        raise SystemExit(t("FFmpeg is required. Please install it and run the installer again."))
+
+    install_cmd = "brew install ffmpeg"
+    extra_note = t("Install Homebrew first (https://brew.sh/)")
+
+    console.print(Panel.fit(
+        t("❌ FFmpeg not found\n\n") +
+        f"{t('🛠️ Install using:')}\n[bold cyan]{install_cmd}[/bold cyan]\n\n" +
+        f"{t('💡 Note:')}\n{extra_note}\n\n" +
+        f"{t('🔄 After installing FFmpeg, please run this installer again:')}\n[bold cyan]bash run_installer.sh[/bold cyan]",
+        style="red"
+    ))
+    raise SystemExit(t("FFmpeg is required. Please install it and run the installer again."))
 
 def check_environment():
     """Check if running in correct Python and conda environment"""

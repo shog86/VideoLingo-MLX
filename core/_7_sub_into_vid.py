@@ -8,7 +8,31 @@ from translations.translations import translate as t
 # larger; bottom line = white, smaller.
 TOP_FONT_SIZE = 20
 BOTTOM_FONT_SIZE = 15
-TOP_FONT_NAME = 'PingFang SC'
+
+def _pick_cjk_font():
+    """Pick a Chinese-capable font that ffmpeg/libass can actually open.
+
+    'PingFang SC' resolves via CoreText to the private Reserved/
+    PingFangUI.ttc path, which libass fails to open ("Error opening
+    font", then silent fallback). Prefer Hiragino Sans GB on macOS —
+    same gothic look, opens cleanly. Other OSes get their local CJK font.
+    """
+    candidates = [
+        ("/System/Library/Fonts/Hiragino Sans GB.ttc", "Hiragino Sans GB"),
+        ("/System/Library/Fonts/STHeiti Medium.ttc", "STHeiti"),
+        ("/System/Library/Fonts/Supplemental/Songti.ttc", "Songti SC"),
+        ("/Library/Fonts/Arial Unicode.ttf", "Arial Unicode MS"),
+        ("C:/Windows/Fonts/msyh.ttc", "Microsoft YaHei"),
+        ("C:/Windows/Fonts/simhei.ttf", "SimHei"),
+        ("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc", "Noto Sans CJK SC"),
+        ("/usr/share/fonts/truetype/wqy/wqy-microhei.ttc", "WenQuanYi Micro Hei"),
+    ]
+    for path, family in candidates:
+        if os.path.exists(path):
+            return family
+    return "sans-serif"
+
+TOP_FONT_NAME = _pick_cjk_font()
 BOTTOM_FONT_NAME = 'Arial Unicode MS'
 # MarginV diff = line gap: TOP sits above BOTTOM by (TOP_MARGIN_V -
 # BOTTOM_MARGIN_V - BOTTOM_FONT_SIZE). Keep a small gap (~8px in style
@@ -245,6 +269,13 @@ def merge_subtitles_to_video(tracks=None, log_callback=None):
         low = line.lower()
         return any(k in low for k in _ERROR_KEYWORDS)
 
+    def _is_font_noise(line):
+        # libass font fallback chatter (e.g. "Error opening font", fontselect
+        # lines): non-fatal, encode continues with a fallback font. Keep in
+        # terminal/log, but don't push to the UI progress slot.
+        low = line.lower()
+        return 'font' in low or 'glyph' in low or 'fontselect' in low
+
     # Always capture full ffmpeg output so failures are diagnosable.
     cmd = list(ffmpeg_cmd)
     use_progress = bool(log_callback and total_dur > 0)
@@ -280,7 +311,7 @@ def merge_subtitles_to_video(tracks=None, log_callback=None):
                     pct="100", cur=f"{total_dur:.0f}",
                     total=f"{total_dur:.0f}",
                     el=f"{time.time() - start_time:.0f}"), 100)
-            elif _is_error_line(line) and not _is_noisy(line):
+            elif _is_error_line(line) and not _is_noisy(line) and not _is_font_noise(line):
                 _report(f"⚠️ ffmpeg: {line[:300]}")
             elif not use_progress and not _is_noisy(line):
                 # Batch/CLI path: keep ffmpeg output visible in terminal

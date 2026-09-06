@@ -9,6 +9,15 @@ cd "$(dirname "$0")"
 
 export PATH="$HOME/.local/bin:$PATH"
 
+# Homebrew 不在 GUI 启动 / 非登录 shell 的默认 PATH 里,ffmpeg 常驻
+# /opt/homebrew/bin 却不可见——提前补上,避免 pydub 等子进程报找不到 ffmpeg。
+for _brew_bin in /opt/homebrew/bin /usr/local/bin; do
+    case ":$PATH:" in
+        *":$_brew_bin:"*) ;;
+        *) [ -d "$_brew_bin" ] && export PATH="$_brew_bin:$PATH" ;;
+    esac
+done
+
 if command -v uv &> /dev/null; then
     echo "🔍 检测到 uv ($(uv --version | awk '{print $2}')),使用 uv 锁定安装..."
     uv sync

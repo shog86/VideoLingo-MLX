@@ -288,6 +288,7 @@ def _render_subtitle_preview(srt_filename):
     """
     from core._7_sub_into_vid import (
         TOP_FONT_SIZE, BOTTOM_FONT_SIZE, TOP_MARGIN_V, BOTTOM_MARGIN_V,
+        TOP_FONT_NAME,
     )
     path = os.path.join("output", srt_filename)
     text_lines = _parse_first_srt_lines(path)
@@ -304,7 +305,7 @@ def _render_subtitle_preview(srt_filename):
     first = html.escape(text_lines[0].strip())
     rendered.append(
         f"<div style=\"display:inline-block;background:rgba(0,0,0,0.9);padding:2px 12px;"
-        f"font-family:'PingFang SC','Arial Unicode MS',sans-serif;"
+        f"font-family:'{TOP_FONT_NAME}','Hiragino Sans GB','PingFang SC','Arial Unicode MS',sans-serif;"
         f"font-size:{TOP_FONT_SIZE}px;color:#FFFF00;text-shadow:{outline};"
         f"line-height:1.25;\">{first}</div>")
     if len(text_lines) > 1:
