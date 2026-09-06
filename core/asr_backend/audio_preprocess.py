@@ -1,4 +1,4 @@
-import os, subprocess
+import os, re, subprocess
 import pandas as pd
 from typing import Dict, List, Tuple
 from pydub import AudioSegment
@@ -8,6 +8,16 @@ from pydub import AudioSegment
 from pydub.silence import detect_silence
 from pydub.utils import mediainfo
 from rich import print as rprint
+
+def _ffmpeg_has_encoder(encoder_name: str) -> bool:
+    """Check if the current ffmpeg installation supports a given audio encoder."""
+    try:
+        result = subprocess.run(
+            ['ffmpeg', '-encoders'], capture_output=True, text=True, timeout=10
+        )
+        return encoder_name in result.stdout
+    except Exception:
+        return False
 
 def normalize_audio_volume(audio_path, output_path, target_db = -20.0, format = "wav"):
     audio = AudioSegment.from_file(audio_path)
@@ -21,14 +31,47 @@ def convert_video_to_audio(video_file: str):
     os.makedirs(_AUDIO_DIR, exist_ok=True)
     if not os.path.exists(_RAW_AUDIO_FILE):
         rprint(f"[blue]🎬➡️🎵 Converting to high quality audio with FFmpeg ......[/blue]")
-        subprocess.run([
-            'ffmpeg', '-y', '-i', video_file, '-vn',
-            '-c:a', 'libmp3lame', '-b:a', '32k',
-            '-ar', '16000',
-            '-ac', '1', 
-            '-metadata', 'encoding=UTF-8', _RAW_AUDIO_FILE
-        ], check=True, stderr=subprocess.PIPE)
+        if _ffmpeg_has_encoder('libmp3lame'):
+            cmd = [
+                'ffmpeg', '-y', '-i', video_file, '-vn',
+                '-c:a', 'libmp3lame', '-b:a', '32k',
+                '-ar', '16000', '-ac', '1',
+                '-metadata', 'encoding=UTF-8', _RAW_AUDIO_FILE
+            ]
+        else:
+            # Fallback: conda-forge ffmpeg often lacks libmp3lame.
+            # Output as WAV (PCM) which all ffmpeg builds support.
+            # Downstream readers (pydub, librosa) detect format by
+            # file header, not extension, so .mp3 path with WAV content works.
+            rprint("[yellow]⚠️ libmp3lame not found in ffmpeg, falling back to WAV (PCM) encoding[/yellow]")
+            cmd = [
+                'ffmpeg', '-y', '-i', video_file, '-vn',
+                '-c:a', 'pcm_s16le', '-ar', '16000', '-ac', '1',
+                '-f', 'wav', _RAW_AUDIO_FILE
+            ]
+        subprocess.run(cmd, check=True, stderr=subprocess.PIPE)
         rprint(f"[green]🎬➡️🎵 Converted <{video_file}> to <{_RAW_AUDIO_FILE}> with FFmpeg\n[/green]")
+
+def prepare_audio_for_asr(audio_file: str):
+    os.makedirs(_AUDIO_DIR, exist_ok=True)
+    if not os.path.exists(_RAW_AUDIO_FILE):
+        rprint(f"[blue]🎵 Preparing uploaded audio for ASR with FFmpeg ......[/blue]")
+        if _ffmpeg_has_encoder('libmp3lame'):
+            cmd = [
+                'ffmpeg', '-y', '-i', audio_file, '-vn',
+                '-c:a', 'libmp3lame', '-b:a', '32k',
+                '-ar', '16000', '-ac', '1',
+                '-metadata', 'encoding=UTF-8', _RAW_AUDIO_FILE
+            ]
+        else:
+            rprint("[yellow]⚠️ libmp3lame not found in ffmpeg, falling back to WAV (PCM) encoding[/yellow]")
+            cmd = [
+                'ffmpeg', '-y', '-i', audio_file, '-vn',
+                '-c:a', 'pcm_s16le', '-ar', '16000', '-ac', '1',
+                '-f', 'wav', _RAW_AUDIO_FILE
+            ]
+        subprocess.run(cmd, check=True, stderr=subprocess.PIPE)
+        rprint(f"[green]🎵 Prepared <{audio_file}> as <{_RAW_AUDIO_FILE}>\n[/green]")
 
 def get_audio_duration(audio_file: str) -> float:
     """Get the duration of an audio file using ffmpeg."""
@@ -84,14 +127,40 @@ def split_audio(audio_file: str, target_len: float = 30*60, win: float = 60) -> 
     rprint(f"[green]🎙️ Audio split completed {len(segments)} segments[/green]")
     return segments
 
+def normalize_spacing(text: str) -> str:
+    """Collapse all whitespace runs (2+/4+ spaces, tabs, etc.) to a single space.
+
+    Whisper word-level output carries leading spaces (e.g. " hello"); naive
+    joining then produces double/quadruple spaces in the final subtitles.
+    Safe for CJK too: single spaces are preserved, runs are collapsed.
+    """
+    if not isinstance(text, str):
+        return text
+    return re.sub(r'\s+', ' ', text).strip()
+
+
 def process_transcription(result: Dict) -> pd.DataFrame:
     all_words = []
     expect_capital = True
     for segment in result['segments']:
         # Get speaker_id, if not exists, set to None
         speaker_id = segment.get('speaker_id', None)
-        
-        for word in segment['words']:
+
+        words = segment.get('words')
+        if not words:
+            # Some ASR backends (e.g. ElevenLabs without word-level timestamps)
+            # return segments without per-word entries. Synthesize a single
+            # word from the segment text so downstream alignment still works.
+            seg_text = (segment.get('text') or '').strip()
+            if not seg_text:
+                continue
+            words = [{
+                'word': seg_text,
+                'start': segment.get('start'),
+                'end': segment.get('end'),
+            }]
+
+        for word in words:
             # Check word length
             if len(word["word"]) > 30:
                 rprint(f"[yellow]⚠️ Warning: Detected word longer than 30 characters, skipping: {word['word']}[/yellow]")
@@ -128,7 +197,7 @@ def process_transcription(result: Dict) -> pd.DataFrame:
                     all_words.append(word_dict)
                 else:
                     # If it's the first word, look next for a timestamp then assign it to the current word
-                    next_word = next((w for w in segment['words'] if 'start' in w and 'end' in w), None)
+                    next_word = next((w for w in words if 'start' in w and 'end' in w), None)
                     if next_word:
                         word_dict = {
                             'text': word["word"],
@@ -158,6 +227,14 @@ def save_results(df: pd.DataFrame):
     # 1. Remove rows where 'text' is empty or just whitespace
     initial_rows = len(df)
     df = df[df['text'].str.strip().str.len() > 0]
+
+    # 1b. Normalize spacing FIRST (before length filters): collapse 2+/4+
+    #     whitespace runs to a single space so padded words aren't misjudged.
+    before_spacing = df['text'].tolist()
+    df['text'] = df['text'].apply(normalize_spacing)
+    n_fixed = sum(1 for a, b in zip(before_spacing, df['text']) if a != b)
+    if n_fixed:
+        rprint(f"[blue]ℹ️ Normalized spacing in {n_fixed} word(s) (collapsed multi-space runs).[/blue]")
     
     # 2. Filter out common ASR hallucinations (e.g., repetitive characters)
     # Repetitive characters filter: if a single character is repeated more than 3 times
@@ -183,6 +260,14 @@ def save_results(df: pd.DataFrame):
         df = df[df['text'].str.len() <= 30]
     
     df['text'] = df['text'].apply(lambda x: f'"{x}"')
+
+    # 5. Final validation: no 2+ consecutive spaces may remain.
+    bad = int(df['text'].str.contains(r'\s{2,}', regex=True).sum())
+    if bad:
+        rprint(f"[yellow]⚠️ Validation: {bad} row(s) still contain 2+ consecutive spaces after normalization.[/yellow]")
+    else:
+        rprint("[green]✅ Spacing validation passed: no multi-space runs remain.[/green]")
+
     df.to_excel(_2_CLEANED_CHUNKS, index=False)
     rprint(f"[green]📊 Excel file saved to {_2_CLEANED_CHUNKS}[/green]")
 

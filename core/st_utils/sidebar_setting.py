@@ -1,6 +1,7 @@
 import streamlit as st
 from translations.translations import translate as t
 from translations.translations import DISPLAY_LANGUAGES
+from core.st_utils.i18n_widgets import persist_expander
 from core.utils import *
 
 def config_input(label, key, help=None):
@@ -10,6 +11,7 @@ def config_input(label, key, help=None):
         update_key(key, val)
     return val
 
+@st.fragment
 def page_setting():
 
     display_language = st.selectbox("Display Language 🌐", 
@@ -22,7 +24,7 @@ def page_setting():
     # with st.expander(t("Youtube Settings"), expanded=True):
     #     config_input(t("Cookies Path"), "youtube.cookies_path")
 
-    with st.expander(t("LLM Configuration"), expanded=True):
+    if persist_expander(t("LLM Configuration"), "sidebar_llm", default=True):
         config_input(t("API_KEY"), "api.key")
         config_input(t("BASE_URL"), "api.base_url", help=t("Openai format, will add /v1/chat/completions automatically"))
         
@@ -38,7 +40,7 @@ def page_setting():
         if llm_support_json != load_key("api.llm_support_json"):
             update_key("api.llm_support_json", llm_support_json)
             st.rerun()
-    with st.expander(t("Subtitles Settings"), expanded=True):
+    if persist_expander(t("Subtitles Settings"), "sidebar_subtitles", default=True):
         c1, c2 = st.columns(2)
         with c1:
             langs = {
@@ -60,12 +62,8 @@ def page_setting():
                 update_key("whisper.language", langs[lang])
                 st.rerun()
 
-        runtime = st.selectbox(t("Whisper Runtime"), options=["mlx", "elevenlabs"], index=["mlx", "elevenlabs"].index(load_key("whisper.runtime")) if load_key("whisper.runtime") in ["mlx", "elevenlabs"] else 0, help=t("MLX is highly recommended for Apple Silicon (M1/M2/M3)."))
-        if runtime != load_key("whisper.runtime"):
-            update_key("whisper.runtime", runtime)
-            st.rerun()
-        if runtime == "elevenlabs":
-            config_input(t("ElevenLabs API"), "whisper.elevenlabs_api_key")
+        # MLX-only build: no runtime selector. whisper.runtime stays "mlx"
+        # in config.yaml; _2_asr falls back to MLX for any other value.
 
         with c2:
             target_language = st.text_input(t("Target Lang"), value=load_key("target_language"), help=t("Input any language in natural language, as long as llm can understand"))
@@ -85,11 +83,13 @@ def page_setting():
                 update_key("ffmpeg_gpu", True)
             st.rerun()
 
-        ffmpeg_gpu = st.toggle(t("FFmpeg GPU Acceleration"), value=load_key("ffmpeg_gpu"), help=t("Use GPU for video encoding (h264_nvenc/VideoToolbox)"))
-        if ffmpeg_gpu != load_key("ffmpeg_gpu"):
-            update_key("ffmpeg_gpu", ffmpeg_gpu)
-            st.rerun()
-    with st.expander(t("Dubbing Settings"), expanded=True):
+        # Mac-optimized build: VideoToolbox GPU encoding is always on, no toggle needed.
+        try:
+            if load_key("ffmpeg_gpu") is not True:
+                update_key("ffmpeg_gpu", True)
+        except KeyError:
+            pass
+    if persist_expander(t("Dubbing Settings"), "sidebar_dubbing", default=True):
         tts_methods = ["azure_tts", "openai_tts", "fish_tts", "sf_fish_tts", "edge_tts", "gpt_sovits", "custom_tts", "sf_cosyvoice2", "f5tts"]
         select_tts = st.selectbox(t("TTS Method"), options=tts_methods, index=tts_methods.index(load_key("tts_method")))
         if select_tts != load_key("tts_method"):

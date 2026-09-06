@@ -1,9 +1,29 @@
 #!/bin/bash
 
 # VideoLingo 安装脚本
-# 确保使用正确的 Python 3.10.0 环境
+# 优先使用 uv (推荐,依赖由 pyproject.toml + uv.lock 精确锁定);
+# 无 uv 时回退到传统 conda 流程。
 
-echo "🔍 初始化 Conda..."
+# 切换到脚本所在目录(项目根目录),防止从其他路径调用找不到 pyproject.toml
+cd "$(dirname "$0")"
+
+export PATH="$HOME/.local/bin:$PATH"
+
+if command -v uv &> /dev/null; then
+    echo "🔍 检测到 uv ($(uv --version | awk '{print $2}')),使用 uv 锁定安装..."
+    uv sync
+    if [ $? -ne 0 ]; then
+        echo "❌ uv sync 失败"
+        exit 1
+    fi
+    echo ""
+    echo "🚀 运行初始化(语言选择 / spacy 模型 / ffmpeg 检查)..."
+    VIDEO_LINGO_SKIP_DEPS=1 uv run python install.py
+    exit $?
+fi
+
+echo "未检测到 uv,回退到 conda 安装流程..."
+echo "💡 推荐先安装 uv: curl -LsSf https://astral.sh/uv/install.sh | sh"
 
 # 加载 Conda 配置
 if [ -n "$CONDA_EXE" ]; then

@@ -1,6 +1,29 @@
 import subprocess
 import json
 
+def get_media_duration(media_path):
+    """Get media duration in seconds via ffprobe (format level)."""
+    try:
+        result = subprocess.run(
+            ['ffprobe', '-v', 'error', '-show_entries', 'format=duration',
+             '-of', 'json', media_path],
+            capture_output=True, text=True, check=True, timeout=30)
+        return float(json.loads(result.stdout)['format']['duration'])
+    except Exception:
+        pass
+    # Fallback: derive from video stream frame count / fps
+    try:
+        import cv2
+        cap = cv2.VideoCapture(media_path)
+        fps = cap.get(cv2.CAP_PROP_FPS) or 0
+        frames = cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0
+        cap.release()
+        if fps > 0 and frames > 0:
+            return frames / fps
+    except Exception:
+        pass
+    return 0.0
+
 def get_video_info(video_path):
     """Get video information using ffprobe"""
     cmd = [

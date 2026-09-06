@@ -148,13 +148,42 @@ def clean_translation(x):
     return autocorrect.format(cleaned)
 
 def align_timestamp_main():
+    from core.asr_backend.audio_preprocess import normalize_spacing
     df_text = pd.read_excel(_2_CLEANED_CHUNKS)
     df_text['text'] = df_text['text'].str.strip('"').str.strip()
     df_translate = pd.read_excel(_5_SPLIT_SUB)
     df_translate['Translation'] = df_translate['Translation'].apply(clean_translation)
-    
+
+    # Normalize spacing on both columns so already-generated intermediate
+    # files (with double spaces) are fixed without re-running transcription.
+    for col in ('Source', 'Translation'):
+        if col in df_translate.columns:
+            before = df_translate[col].astype(str).tolist()
+            df_translate[col] = df_translate[col].apply(
+                lambda x: normalize_spacing(x) if pd.notna(x) else x)
+            n_fixed = sum(1 for a, b in zip(before, df_translate[col].astype(str)) if a != b)
+            if n_fixed:
+                console.print(f"[blue]ℹ️ Normalized spacing in {n_fixed} '{col}' cell(s).[/blue]")
+
     align_timestamp(df_text, df_translate, SUBTITLE_OUTPUT_CONFIGS, _OUTPUT_DIR)
     console.print(Panel("[bold green]🎉📝 Subtitles generation completed! Please check in the `output` folder 👀[/bold green]"))
+
+    # Validate written SRTs: fail loudly if any multi-space run survived.
+    import glob as _glob
+    bad_files = []
+    for path in _glob.glob(os.path.join(_OUTPUT_DIR, '*.srt')):
+        with open(path, encoding='utf-8') as f:
+            for i, line in enumerate(f, 1):
+                if '-->' in line or not line.strip() or line.strip().isdigit():
+                    continue
+                if re.search(r' {2,}|\t', line):
+                    bad_files.append((os.path.basename(path), i, line.strip()[:60]))
+    if bad_files:
+        console.print(f"[yellow]⚠️ Spacing validation: {len(bad_files)} subtitle line(s) still contain multi-space runs (showing first 5):[/yellow]")
+        for name, lineno, snippet in bad_files[:5]:
+            console.print(f"  [yellow]{name}:{lineno}: {snippet}[/yellow]")
+    else:
+        console.print("[green]✅ SRT spacing validation passed: no multi-space runs in subtitle text.[/green]")
 
     # for audio
     df_translate_for_audio = pd.read_excel(_5_REMERGED) # use remerged file to avoid unmatched lines when dubbing

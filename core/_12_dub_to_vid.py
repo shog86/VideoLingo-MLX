@@ -28,6 +28,11 @@ TRANS_BACK_COLOR = '&H33000000'
 
 def merge_video_audio():
     """Merge video and audio, and reduce video volume"""
+    from core._1_ytdlp import is_audio_only_input
+    if is_audio_only_input():
+        rprint("[bold green]🎵 Audio-only input: skipping dubbing video merge. Dubbed audio is in the `output` directory.[/bold green]")
+        return
+
     VIDEO_FILE = find_video_files()
     background_file = _BACKGROUND_AUDIO_FILE
     

@@ -38,7 +38,7 @@ def test_diarization(audio_path):
         end_time = time.time()
         print(f"Diarization completed in {end_time - start_time:.2f} seconds.")
         
-        for turn, _, speaker in diarization.itertracks(yield_label=True):
+        for turn, _, speaker in diarization.speaker_diarization.itertracks(yield_label=True):
             print(f"start={turn.start:.1f}s stop={turn.end:.1f}s speaker_{speaker}")
             # Just print first few for testing
             if turn.start > 60:

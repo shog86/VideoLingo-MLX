@@ -3,6 +3,7 @@ import streamlit as st
 import io, zipfile
 from core.st_utils.download_video_section import download_video_section
 from core.st_utils.sidebar_setting import page_setting
+from core.st_utils.i18n_widgets import localized_uploader, uploader_i18n_css, cta_progress
 from translations.translations import translate as t
 
 def download_subtitle_zip_button(text: str):
@@ -32,18 +33,20 @@ give_star_button = """
         display: block;
         width: 100%;
         padding: 0.5em 1em;
-        color: #144070;
-        background-color: #d0e0f2;
-        border-radius: 6px;
+        color: #1c1917;
+        background-color: #f5f5f4;
+        border: 1px solid #e7e5e4;
+        border-radius: 10px;
         text-decoration: none;
-        font-weight: bold;
+        font-size: 14px;
+        font-weight: 600;
         text-align: center;
-        transition: background-color 0.3s ease, color 0.3s ease;
+        transition: background-color 0.3s ease;
         box-sizing: border-box;
     }
     .github-button:hover {
-        background-color: #ffffff;
-        color: #144070;
+        background-color: #e7e5e4;
+        color: #1c1917;
     }
 </style>
 <a href="https://github.com/Huanshere/VideoLingo" target="_blank" style="text-decoration: none;">
@@ -51,69 +54,4 @@ give_star_button = """
         Star on GitHub 🌟
     </div>
 </a>
-"""
-
-button_style = """
-<style>
-div.stButton > button:first-child {
-    display: block;
-    padding: 0.5em 1em;
-    color: #144070;
-    background-color: transparent;
-    text-decoration: none;
-    font-weight: bold;
-    text-align: center;
-    transition: all 0.3s ease;
-    box-sizing: border-box;
-    border: 2px solid #D0DFF2;
-    font-size: 1.2em;
-}
-div.stButton > button:hover {
-    background-color: transparent;
-    color: #144070;
-    border-color: #144070;
-}
-div.stButton > button:active, div.stButton > button:focus {
-    background-color: transparent !important;
-    color: #144070 !important;
-    border-color: #144070 !important;
-    box-shadow: none !important;
-}
-div.stButton > button:active:hover, div.stButton > button:focus:hover {
-    background-color: transparent !important;
-    color: #144070 !important;
-    border-color: #144070 !important;
-    box-shadow: none !important;
-}
-div.stDownloadButton > button:first-child {
-    display: block;
-    padding: 0.5em 1em;
-    color: #144070;
-    background-color: transparent;
-    text-decoration: none;
-    font-weight: bold;
-    text-align: center;
-    transition: all 0.3s ease;
-    box-sizing: border-box;
-    border: 2px solid #D0DFF2;
-    font-size: 1.2em;
-}
-div.stDownloadButton > button:hover {
-    background-color: transparent;
-    color: #144070;
-    border-color: #144070;
-}
-div.stDownloadButton > button:active, div.stDownloadButton > button:focus {
-    background-color: transparent !important;
-    color: #144070 !important;
-    border-color: #144070 !important;
-    box-shadow: none !important;
-}
-div.stDownloadButton > button:active:hover, div.stDownloadButton > button:focus:hover {
-    background-color: transparent !important;
-    color: #144070 !important;
-    border-color: #144070 !important;
-    box-shadow: none !important;
-}
-</style>
 """

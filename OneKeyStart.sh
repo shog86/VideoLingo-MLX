@@ -14,6 +14,17 @@ NC='\033[0m' # No Color
 
 echo -e "${BLUE}🚀 Starting VideoLingo (macOS)...${NC}"
 
+# 切换到脚本所在目录(项目根目录),防止从其他路径调用找不到 st.py
+cd "$(dirname "$0")"
+
+# Preferred: uv-managed project venv (created by `uv sync` / run_installer.sh)
+if [ -x ".venv/bin/python" ]; then
+    echo -e "${GREEN}✅ Found .venv (uv). Launching UI...${NC}"
+    export TORCHAUDIO_USE_BACKEND_DISPATCHER=1
+    exec .venv/bin/python -m streamlit run st.py
+fi
+
+# Fallback: conda environment
 # Find conda
 CONDA_PATH=$(which conda)
 if [ -z "$CONDA_PATH" ]; then

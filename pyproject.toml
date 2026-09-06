@@ -1,0 +1,65 @@
+[project]
+name = "videolingo"
+version = "3.0.0"
+description = "Connect the World, Frame by Frame — Mac (Apple Silicon / MLX) optimized fork"
+readme = "README.md"
+requires-python = ">=3.11"  # 3.10 excluded: scipy cp310 wheels fail dlopen on macOS 26+
+license = { file = "LICENSE" }
+
+dependencies = [
+    "numba>=0.61.0",
+    "librosa==0.10.2.post1",
+    "moviepy==1.0.3",
+    "numpy>=2.0",
+    "openai==1.55.3",
+    "opencv-python==4.10.0.84",
+    "openpyxl==3.1.5",
+    "pandas==2.2.3",
+    "pydub==0.25.1",
+    "PyYAML==6.0.2",
+    "replicate==0.33.0",
+    "requests==2.32.3",
+    "spacy>=3.8.2",
+    "streamlit==1.38.0",
+    "yt-dlp",
+    "json-repair",
+    "ruamel.yaml",
+    "InquirerPy",
+    "autocorrect-py",
+    "edge-tts",
+    "syllables",
+    "pypinyin",
+    "g2p-en",
+    "xmltodict",
+
+    # torch >= 2.4 for numpy 2.x interop; < 2.9 keeps legacy load/save/info APIs demucs needs
+    "torch>=2.4,<2.9",
+    "torchaudio>=2.4,<2.9",
+    "scipy>=1.15",
+
+    # Mac MLX ASR stack
+    "mlx-whisper",
+    "mlx",
+    "pyannote.audio>=4.0",
+    "python-dotenv",
+
+    # Vocal separation. As a locked git dependency the exact commit is pinned
+    # in uv.lock (previously installed manually with pip --no-deps).
+    "demucs @ git+https://github.com/adefossez/demucs",
+]
+
+[tool.uv]
+# This fork is Apple-Silicon only (MLX requires it): locking to arm64 macOS
+# also avoids demucs' numpy<2 pin which targets intel macs.
+environments = ["sys_platform == 'darwin' and platform_machine == 'arm64'"]
+# Run from the source tree (streamlit run st.py); do not build/install the project itself.
+package = false
+
+# Force-resolve known transitive conflicts:
+# - streamlit requires protobuf<6, but pyannoteai-sdk -> grpcio wants >=6.33
+# - demucs declares torchaudio<2.2, which would resurrect torch 2.1 (numpy-2 incompatible)
+override-dependencies = [
+    "protobuf<6",
+    "torch>=2.4,<2.9",
+    "torchaudio>=2.4,<2.9",
+]

@@ -7,6 +7,7 @@ from rich import print as rprint
 from core.utils import *
 import numpy as np
 import librosa
+from translations.translations import translate as t
 
 # Load Hugging Face token from config
 HF_TOKEN = load_key("api.huggingface_token")
@@ -21,7 +22,7 @@ def load_whisper_model(model_name):
     # Alternatively, we just rely on the first call of transcribe_audio to do it.
     pass
 
-def transcribe_audio(raw_audio_file, vocal_audio_file, start, end, model=None):
+def transcribe_audio(raw_audio_file, vocal_audio_file, start, end, model=None, progress_callback=None):
     """
     Transcribe audio using MLX-Whisper and diarize using pyannote-audio.
     """
@@ -41,6 +42,8 @@ def transcribe_audio(raw_audio_file, vocal_audio_file, start, end, model=None):
     audio_segment, _ = librosa.load(raw_audio_file, sr=16000, offset=start, duration=end - start)
     
     rprint("[bold green]🎤 Transcribing with MLX-Whisper...[/bold green]")
+    if progress_callback:
+        progress_callback(step="whisper", detail=t("mlx_whisper"))
     
     # MLX-Whisper's internal ModelHolder will handle caching the model weights 
     # based on the whisper_model_name string.
@@ -58,12 +61,21 @@ def transcribe_audio(raw_audio_file, vocal_audio_file, start, end, model=None):
     # 2. Diarization with Pyannote
     diarization_start_time = time.time()
     rprint("[bold green]👥 Diarizing with Pyannote-audio...[/bold green]")
+    if progress_callback:
+        progress_callback(step="diarize", detail=t("mlx_diarize"))
     
     try:
-        pipeline = Pipeline.from_pretrained(
-            "pyannote/speaker-diarization-3.1",
-            use_auth_token=HF_TOKEN
-        )
+        # pyannote.audio >= 4.0 renamed `use_auth_token` to `token`
+        try:
+            pipeline = Pipeline.from_pretrained(
+                "pyannote/speaker-diarization-3.1",
+                token=HF_TOKEN
+            )
+        except TypeError:
+            pipeline = Pipeline.from_pretrained(
+                "pyannote/speaker-diarization-3.1",
+                use_auth_token=HF_TOKEN
+            )
         # Move to GPU if available (Metal for Mac is usually handled via 'cpu' or auto in pyannote, 
         # but pyannote 3.1 often prefers torch device)
         device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
@@ -86,7 +98,7 @@ def transcribe_audio(raw_audio_file, vocal_audio_file, start, end, model=None):
             
             # Find speakers in this time range
             speakers_in_range = []
-            for turn, _, speaker in diarization.itertracks(yield_label=True):
+            for turn, _, speaker in diarization.speaker_diarization.itertracks(yield_label=True):
                 # Check overlap
                 overlap_start = max(seg_start, turn.start)
                 overlap_end = min(seg_end, turn.end)

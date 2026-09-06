@@ -1,4 +1,5 @@
 import os
+import re
 import pandas as pd
 import warnings
 from core.spacy_utils.load_nlp_model import init_nlp, SPLIT_BY_MARK_FILE
@@ -17,6 +18,10 @@ def split_by_mark(nlp):
     
     # join with joiner
     input_text = joiner.join(chunks.text.to_list())
+    # Words from whisper carry their own leading spaces; joining with " "
+    # would otherwise create double/quadruple spaces downstream.
+    if joiner == " ":
+        input_text = re.sub(r'\s+', ' ', input_text).strip()
 
     doc = nlp(input_text)
     assert doc.has_annotation("SENT_START")

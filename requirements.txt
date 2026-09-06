@@ -1,7 +1,9 @@
+# NOTE: pyproject.toml + uv.lock are the canonical dependency source (uv flow).
+# This file only serves the legacy conda/pip installer path; keep both in sync.
 numba>=0.61.0
 librosa==0.10.2.post1
 moviepy==1.0.3
-numpy>=1.26.4
+numpy>=2.0
 openai==1.55.3
 opencv-python==4.10.0.84
 openpyxl==3.1.5
@@ -18,7 +20,16 @@ ruamel.yaml
 InquirerPy
 autocorrect-py
 edge-tts
-demucs[dev] @ git+https://github.com/adefossez/demucs
+# demucs is installed separately in install.py (--no-deps): its metadata pins
+# torchaudio<2.2 which conflicts with the torch range below (runtime works fine).
+# demucs[dev] @ git+https://github.com/adefossez/demucs
+
+# torch >= 2.4 required for numpy 2.x interop (torch.from_numpy).
+# torchaudio must stay < 2.9: newer versions removed the legacy load/save/info
+# APIs that demucs relies on for audio I/O.
+torch>=2.4,<2.9
+torchaudio>=2.4,<2.9
+scipy>=1.15
 
 syllables
 pypinyin
@@ -27,5 +38,6 @@ xmltodict
 
 mlx-whisper
 mlx
-pyannote.audio
+pyannote.audio>=4.0
 python-dotenv
+protobuf<6

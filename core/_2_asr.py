@@ -1,23 +1,33 @@
 from core.utils import *
 from core.asr_backend.demucs_vl import demucs_audio
-from core.asr_backend.audio_preprocess import process_transcription, convert_video_to_audio, split_audio, save_results, normalize_audio_volume
-from core._1_ytdlp import find_video_files
+from core.asr_backend.audio_preprocess import process_transcription, convert_video_to_audio, prepare_audio_for_asr, split_audio, save_results, normalize_audio_volume
+from core._1_ytdlp import find_media_file
 from core.utils.models import *
+from translations.translations import translate as t
 
 @check_file_exists(_2_CLEANED_CHUNKS)
-def transcribe():
-    # 1. video to audio
-    video_file = find_video_files()
-    convert_video_to_audio(video_file)
+def transcribe(progress_callback=None):
+    # 1. prepare audio
+    if progress_callback:
+        progress_callback(step="prepare", detail=t("asr_prepare"), percent=0)
+    media_file, media_type = find_media_file()
+    if media_type == "video":
+        convert_video_to_audio(media_file)
+    else:
+        prepare_audio_for_asr(media_file)
 
     # 2. Demucs vocal separation:
     if load_key("demucs"):
+        if progress_callback:
+            progress_callback(step="demucs", detail=t("asr_demucs"), percent=10)
         demucs_audio()
         vocal_audio = normalize_audio_volume(_VOCAL_AUDIO_FILE, _VOCAL_AUDIO_FILE, format="mp3")
     else:
         vocal_audio = _RAW_AUDIO_FILE
 
     # 3. Extract audio
+    if progress_callback:
+        progress_callback(step="split", detail=t("asr_split"), percent=20)
     segments = split_audio(_RAW_AUDIO_FILE)
     
     # 4. Transcribe audio by clips
@@ -38,18 +48,29 @@ def transcribe():
         whisper_model_name = load_key("whisper.model")
         load_whisper_model(whisper_model_name)
 
-    for start, end in segments:
+    total_segments = len(segments)
+    for i, (start, end) in enumerate(segments):
+        if progress_callback:
+            pct = 25 + int((i / total_segments) * 55)
+            progress_callback(step="transcribe", detail=t("asr_transcribe_fmt").format(
+                i=i+1, n=total_segments, s=f"{start:.1f}", e=f"{end:.1f}"), percent=pct)
         result = ts(_RAW_AUDIO_FILE, vocal_audio, start, end)
         all_results.append(result)
     
     # 5. Combine results
+    if progress_callback:
+        progress_callback(step="combine", detail=t("asr_combine"), percent=85)
     combined_result = {'segments': []}
     for result in all_results:
         combined_result['segments'].extend(result['segments'])
     
     # 6. Process df
+    if progress_callback:
+        progress_callback(step="process", detail=t("asr_process"), percent=90)
     df = process_transcription(combined_result)
     save_results(df)
+    if progress_callback:
+        progress_callback(step="done", detail=t("asr_done"), percent=100)
         
 if __name__ == "__main__":
     transcribe()

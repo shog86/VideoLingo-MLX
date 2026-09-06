@@ -1,24 +1,28 @@
 import os
 import re
 import shutil
-import subprocess
 from time import sleep
 
 import streamlit as st
-from core._1_ytdlp import download_video_ytdlp, find_video_files
+from core._1_ytdlp import download_video_ytdlp, find_media_file, write_input_manifest
+from core.st_utils.i18n_widgets import localized_uploader, cta_progress
 from core.utils import *
 from translations.translations import translate as t
 
 OUTPUT_DIR = "output"
 
+@st.fragment
 def download_video_section():
     st.header(t("a. Download or Upload Video"))
-    with st.container(border=True):
+    with st.container():
         try:
-            video_file = find_video_files()
-            st.video(video_file)
+            media_file, media_type = find_media_file()
+            if media_type == "video":
+                st.video(media_file)
+            else:
+                st.audio(media_file)
             if st.button(t("Delete and Reselect"), key="delete_video_button"):
-                os.remove(video_file)
+                os.remove(media_file)
                 if os.path.exists(OUTPUT_DIR):
                     shutil.rmtree(OUTPUT_DIR)
                 sleep(1)
@@ -39,13 +43,40 @@ def download_video_section():
                 default_idx = list(res_dict.values()).index(target_res) if target_res in res_dict.values() else 0
                 res_display = st.selectbox(t("Resolution"), options=res_options, index=default_idx)
                 res = res_dict[res_display]
-            if st.button(t("Download Video"), key="download_button", use_container_width=True):
+            dl_slot = st.empty()
+            if dl_slot.button(t("Download Video"), key="download_button", use_container_width=True,
+                              type="primary"):
                 if url:
-                    with st.spinner("Downloading video..."):
-                        download_video_ytdlp(url, resolution=res)
+                    last_step = [-1]
+
+                    def _dl_progress(percent=None, speed=None, eta=None, finished=False, **kwargs):
+                        if finished:
+                            cta_progress(dl_slot, t("dl_finalizing"))
+                            return
+                        if percent is None:
+                            return
+                        # Throttle: refresh button text on every 5% step
+                        step = int(percent // 5)
+                        if step == last_step[0]:
+                            return
+                        last_step[0] = step
+                        parts = [f"{percent:.0f}%"]
+                        if speed:
+                            if speed > 1_000_000:
+                                parts.append(f"{speed/1_000_000:.1f} MB/s")
+                            else:
+                                parts.append(f"{speed/1_000:.1f} KB/s")
+                        if eta:
+                            parts.append(f"ETA {eta:.0f}s")
+                        cta_progress(dl_slot, f"{t('Download Video')} {' | '.join(parts)}")
+
+                    download_video_ytdlp(url, resolution=res, progress_callback=_dl_progress)
                     st.rerun()
 
-            uploaded_file = st.file_uploader(t("Or upload video"), type=load_key("allowed_video_formats") + load_key("allowed_audio_formats"))
+            uploaded_file = localized_uploader(
+                key="video_upload",
+                file_types=load_key("allowed_video_formats") + load_key("allowed_audio_formats"))
+            st.caption(f"{t('Or upload video')} · {t('uploader_limit_video')}")
             if uploaded_file:
                 if os.path.exists(OUTPUT_DIR):
                     shutil.rmtree(OUTPUT_DIR)
@@ -58,37 +89,10 @@ def download_video_section():
                 with open(os.path.join(OUTPUT_DIR, clean_name), "wb") as f:
                     f.write(uploaded_file.getbuffer())
 
-                if ext.lower() in load_key("allowed_audio_formats"):
-                    convert_audio_to_video(os.path.join(OUTPUT_DIR, clean_name))
+                media_path = os.path.join(OUTPUT_DIR, clean_name)
+                media_ext = ext.lower().lstrip(".")
+                media_type = "video" if media_ext in load_key("allowed_video_formats") else "audio"
+                write_input_manifest(media_path, media_type)
                 st.rerun()
             else:
                 return False
-
-def convert_audio_to_video(audio_file: str) -> str:
-    output_video = os.path.join(OUTPUT_DIR, 'black_screen.mp4')
-    if not os.path.exists(output_video):
-        print(f"🎵➡️🎬 Converting audio to video with FFmpeg ......")
-        ffmpeg_cmd = ['ffmpeg', '-y', '-f', 'lavfi', '-i', 'color=c=black:s=640x360', '-i', audio_file, '-shortest']
-        
-        if load_key("ffmpeg_gpu"):
-            rprint("[bold green]Using GPU acceleration (VideoToolbox)...[/bold green]")
-            video_info = get_video_info(audio_file)
-            bitrate = video_info.get('bitrate')
-            
-            ffmpeg_cmd.extend(['-c:v', 'h264_videotoolbox'])
-            if bitrate:
-                ffmpeg_cmd.extend(['-b:v', str(bitrate)])
-            else:
-                ffmpeg_cmd.extend(['-q:v', '65'])
-            
-            ffmpeg_cmd.extend(['-pix_fmt', 'yuv420p'])
-            ffmpeg_cmd.extend(['-prio_speed', '1'])
-        else:
-            ffmpeg_cmd.extend(['-c:v', 'libx264', '-crf', '18', '-preset', 'slow'])
-            
-        ffmpeg_cmd.extend(['-c:a', 'aac', '-pix_fmt', 'yuv420p', output_video])
-        subprocess.run(ffmpeg_cmd, check=True, capture_output=True, text=True, encoding='utf-8')
-        print(f"🎵➡️🎬 Converted <{audio_file}> to <{output_video}> with FFmpeg\n")
-        # delete audio file
-        os.remove(audio_file)
-    return output_video

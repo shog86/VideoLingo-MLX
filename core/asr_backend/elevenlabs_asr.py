@@ -47,7 +47,7 @@ def elev2whisper(elev_json, word_level_timestamp = False):
         seg["text"] += prev["text"]
         seg["end"] = prev["end"]
         if word_level_timestamp:
-            seg["words"].append({"text": prev["text"], "start": prev["start"], "end": prev["end"]})
+            seg["words"].append({"word": prev["text"], "start": prev["start"], "end": prev["end"]})
         # decide whether to break the segment
         if nxt is None or (nxt["start"] - prev["end"] > SPLIT_GAP) or (nxt["speaker_id"] != seg["speaker_id"]):
             seg["text"] = seg["text"].strip()
@@ -124,7 +124,8 @@ def transcribe_audio_elevenlabs(raw_audio_path, vocal_audio_path, start = None, 
                     word['end'] += start
         
         rprint(f"[green]✓ Transcription completed in {time.time() - start_time:.2f} seconds[/green]")
-        parsed_result = elev2whisper(result)
+        # Keep word-level timestamps so downstream process_transcription has `words`.
+        parsed_result = elev2whisper(result, word_level_timestamp=True)
         os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
         with open(LOG_FILE, "w", encoding="utf-8") as f:
             json.dump(parsed_result, f, indent=4, ensure_ascii=False)

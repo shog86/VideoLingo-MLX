@@ -45,6 +45,14 @@ def check_environment():
     """Check if running in correct Python and conda environment"""
     import sys
 
+    # uv-managed flow (.venv created by `uv sync`): environment is already correct
+    if os.environ.get("VIDEO_LINGO_SKIP_DEPS") == "1":
+        return
+
+    # Accept any virtualenv too
+    if os.environ.get('VIRTUAL_ENV'):
+        return
+
     # Check Python version
     python_version = sys.version_info
     if python_version.major != 3 or python_version.minor < 10:
@@ -65,7 +73,10 @@ def main():
     # Check environment before proceeding
     check_environment()
 
-    install_package("requests", "rich", "ruamel.yaml", "InquirerPy", "python-dotenv")
+    skip_deps = os.environ.get("VIDEO_LINGO_SKIP_DEPS") == "1"
+
+    if not skip_deps:
+        install_package("requests", "rich", "ruamel.yaml", "InquirerPy", "python-dotenv")
     from rich.console import Console
     from rich.panel import Panel
     from rich.box import DOUBLE
@@ -109,37 +120,49 @@ def main():
         choose_mirror()
 
     # Detect system and GPU
-    # MacOS optimized installation
-    console.print(Panel(t("🍎 Installing MacOS optimized dependencies..."), style="cyan"))
-    try:
-        subprocess.check_call(["conda", "install", "-c", "conda-forge", "pkg-config", "ffmpeg>=6.0.0", "-y"])
-        console.print(Panel(t("✅ Successfully installed base packages via conda"), style="green"))
-        console.print(Panel(t("🍎 Installing PyTorch for MacOS..."), style="cyan"))
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "torch", "torchaudio"])
-    except Exception as e:
-        console.print(Panel(t("⚠️ Warning: Failed to install via conda or pip: {e}").format(e=e), style="yellow"))
+    if not skip_deps:
+        # MacOS optimized installation
+        console.print(Panel(t("🍎 Installing MacOS optimized dependencies..."), style="cyan"))
+        try:
+            subprocess.check_call(["conda", "install", "-c", "conda-forge", "pkg-config", "ffmpeg>=6.0.0", "-y"])
+            console.print(Panel(t("✅ Successfully installed base packages via conda"), style="green"))
+            console.print(Panel(t("🍎 Installing PyTorch for MacOS..."), style="cyan"))
+            # torch >= 2.4 for numpy 2.x interop; torchaudio < 2.9 keeps the legacy
+            # audio I/O APIs that demucs depends on
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "torch>=2.4,<2.9", "torchaudio>=2.4,<2.9"])
+        except Exception as e:
+            console.print(Panel(t("⚠️ Warning: Failed to install via conda or pip: {e}").format(e=e), style="yellow"))
 
     @except_handler("Failed to install project")
     def install_requirements():
         console.print(Panel(t("Installing project requirements..."), style="cyan"))
         env = {**os.environ, "PIP_NO_CACHE_DIR": "0", "PYTHONIOENCODING": "utf-8"}
-        
+
         # 1. Install project in editable mode
         subprocess.check_call([sys.executable, "-m", "pip", "install", "-e", "."], env=env)
-        
-        # 2. Re-install demucs from git with --no-deps to fix missing demucs.api and avoid version conflicts
+
+        # 2. Re-install demucs from git with --no-deps: its metadata pins
+        #    torchaudio<2.2 which conflicts with the torch range above (runtime works fine)
         console.print(Panel(t("Fixing Demucs API..."), style="cyan"))
         subprocess.check_call([sys.executable, "-m", "pip", "install", "--no-deps", "git+https://github.com/adefossez/demucs"], env=env)
-        
+
         # 3. Update spacy models to match installed spacy version
         console.print(Panel(t("Updating Spacy models..."), style="cyan"))
         subprocess.check_call([sys.executable, "-m", "spacy", "download", "en_core_web_md"], env=env)
-        
-        # 4. Ensure torchaudio consistency (last step)
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "torchaudio", "--no-deps"], env=env)
 
-    
-    install_requirements()
+        # 4. Ensure torchaudio consistency (last step)
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "torchaudio>=2.4,<2.9", "--no-deps"], env=env)
+
+
+    if not skip_deps:
+        install_requirements()
+    else:
+        # uv path: dependencies come from uv.lock; only the spacy model is missing
+        console.print(Panel(t("Updating Spacy models..."), style="cyan"))
+        try:
+            subprocess.check_call([sys.executable, "-m", "spacy", "download", "en_core_web_md"])
+        except Exception as e:
+            console.print(f"⚠️ spacy model download skipped/failed: {e}", style="yellow")
     
     def pre_download_models():
         """Optional step to pre-download models if HF token is provided"""
@@ -184,8 +207,13 @@ except Exception as e:
 
 print("Checking Pyannote models...")
 try:
-    Pipeline.from_pretrained("pyannote/speaker-diarization-3.1", use_auth_token=token)
-    Pipeline.from_pretrained("pyannote/segmentation-3.0", use_auth_token=token)
+    # pyannote.audio >= 4.0 renamed `use_auth_token` to `token`
+    try:
+        Pipeline.from_pretrained("pyannote/speaker-diarization-3.1", token=token)
+        Pipeline.from_pretrained("pyannote/segmentation-3.0", token=token)
+    except TypeError:
+        Pipeline.from_pretrained("pyannote/speaker-diarization-3.1", use_auth_token=token)
+        Pipeline.from_pretrained("pyannote/segmentation-3.0", use_auth_token=token)
     print("✅ Pyannote models ready.")
 except Exception as e:
     print(f"⚠️ Pyannote download failed: {e}")

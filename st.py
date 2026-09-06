@@ -1,13 +1,16 @@
 import streamlit as st
-import os, sys
+import os, sys, html
+from contextlib import redirect_stdout, redirect_stderr
+from datetime import datetime
 
-# Set environment variables to suppress warnings
 os.environ["TORCHAUDIO_USE_BACKEND_DISPATCHER"] = "1"
 
 from core.st_utils.imports_and_utils import *
+from core.st_utils.ui_log import UILog
+from core.st_utils.i18n_widgets import persist_expander
+from core.st_utils.theme import THEME_CSS
 from core import *
 
-# SET PATH
 current_dir = os.path.dirname(os.path.abspath(__file__))
 os.environ['PATH'] += os.pathsep + current_dir
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -17,77 +20,312 @@ st.set_page_config(page_title="VideoLingo", page_icon="docs/logo.svg")
 SUB_VIDEO = "output/output_sub.mp4"
 DUB_VIDEO = "output/output_dub.mp4"
 
-def text_processing_section():
-    st.header(t("b. Translate and Generate Subtitles"))
-    with st.container(border=True):
-        st.markdown(f"""
-        <p style='font-size: 20px;'>
-        {t("This stage includes the following steps:")}
-        <p style='font-size: 20px;'>
-            1. {t("Word-level transcription")}<br>
-            2. {t("Sentence segmentation using NLP and LLM")}<br>
-            3. {t("Summarization and multi-step translation")}<br>
-            4. {t("Cutting and aligning long subtitles")}<br>
-            5. {t("Generating timeline and subtitles")}<br>
-            6. {t("Merging subtitles into the video")}
-        """, unsafe_allow_html=True)
+# Intermediate file paths for phase detection
+SRC_SRT = "output/src.srt"
+TRANS_SRT = "output/trans.srt"
+SRC_TRANS_SRT = "output/src_trans.srt"
+TRANS_SRC_SRT = "output/trans_src.srt"
+ALL_SRTS = [SRC_SRT, TRANS_SRT, SRC_TRANS_SRT, TRANS_SRC_SRT]
+TRANSLATION_XLSX = "output/log/translation_results.xlsx"
+SPLIT_SUB_XLSX = "output/log/translation_results_for_subtitles.xlsx"
+CLEANED_CHUNKS_XLSX = "output/log/cleaned_chunks.xlsx"
+TERMINOLOGY_JSON = "output/log/terminology.json"
 
-        if not os.path.exists(SUB_VIDEO):
-            # Allow skipping transcription and translation if files exist
-            if os.path.exists("output/src.srt") and os.path.exists("output/trans.srt"):
-                burn_only = st.checkbox(t("Burn Subtitles Only (Use existing srt files)"), value=False)
-            else:
-                burn_only = False
-            
-            if st.button(t("Start Processing Subtitles"), key="text_processing_button"):
-                process_text(burn_only)
-                st.rerun()
+# Shared subtitle options: (i18n label key, filename)
+SUBTITLE_OPTIONS = [
+    ("sub_label_source", "src.srt"),
+    ("sub_label_trans", "trans.srt"),
+    ("sub_label_src_trans", "src_trans.srt"),
+    ("sub_label_trans_src", "trans_src.srt"),
+]
+
+def _has_media():
+    try:
+        from core._1_ytdlp import find_media_file
+        find_media_file()
+        return True
+    except Exception:
+        return False
+
+def render_stepper():
+    """Slim 4-step pipeline status bar derived from files on disk."""
+    steps = [
+        ("step_download", _has_media()),
+        ("step_transcribe", os.path.exists(SRC_SRT) and os.path.exists(TRANS_SRT)),
+        ("step_review", any(os.path.exists(p) for p in ALL_SRTS)),
+        ("step_burn", os.path.exists(SUB_VIDEO)),
+    ]
+    # first incomplete step is the active one
+    active_idx = next((i for i, (_, done) in enumerate(steps) if not done), len(steps))
+    items = []
+    for i, (key, done) in enumerate(steps):
+        if done:
+            bg, fg, mark = "#e7e5e4", "#1c1917", "✓"
+        elif i == active_idx:
+            bg, fg, mark = "#1c1917", "#ffffff", "●"
         else:
-            if load_key("burn_subtitles"):
-                st.video(SUB_VIDEO)
-            download_subtitle_zip_button(text=t("Download All Srt Files"))
-            
-            if st.button(t("Archive to 'history'"), key="cleanup_in_text_processing"):
-                cleanup()
-                st.rerun()
-            return True
+            bg, fg, mark = "transparent", "#a8a29e", "○"
+        items.append(
+            f"<div style='flex:1;text-align:center;background:{bg};color:{fg};"
+            f"border-radius:10px;padding:8px 4px;font-size:14px;font-weight:600;'>"
+            f"{mark} {t(key)}</div>")
+        if i < len(steps) - 1:
+            items.append("<div style='align-self:center;color:#a8a29e;padding:0 4px;'>→</div>")
+    st.markdown(f"<div style='display:flex;align-items:stretch;margin:4px 0 12px 0;'>"
+                f"{''.join(items)}</div>", unsafe_allow_html=True)
 
-def process_text(burn_only=False):
-    if not burn_only:
-        with st.spinner(t("Using Whisper for transcription...")):
-            _2_asr.transcribe()
-        with st.spinner(t("Splitting long sentences...")):  
-            _3_1_split_nlp.split_by_spacy()
-            _3_2_split_meaning.split_sentences_by_meaning()
-        with st.spinner(t("Summarizing and translating...")):
-            _4_1_summarize.get_summary()
-            if load_key("pause_before_translate"):
-                input(t("⚠️ PAUSE_BEFORE_TRANSLATE. Go to `output/log/terminology.json` to edit terminology. Then press ENTER to continue..."))
-            _4_2_translate.translate_all()
-        with st.spinner(t("Processing and aligning subtitles...")): 
-            _5_split_sub.split_for_sub_main()
-            _6_gen_sub.align_timestamp_main()
-            
-    with st.spinner(t("Merging subtitles to video...")):
-        _7_sub_into_vid.merge_subtitles_to_video()
-    
-    st.success(t("Subtitle processing complete! 🎉"))
-    st.balloons()
+def _srt_mtime_label(path):
+    mtime = os.path.getmtime(path)
+    size = os.path.getsize(path)
+    return datetime.fromtimestamp(mtime).strftime("%m-%d %H:%M") + f" · {size/1024:.0f}KB"
+
+def _stored_log_box(session_key):
+    """Collapsed expander showing the previous run's log, if any."""
+    lines = st.session_state.get(session_key)
+    if lines:
+        with st.expander(t("run_log"), expanded=False):
+            st.code("\n".join(lines[-300:]), language="text")
+
+def phase1_transcribe(log, progress_callback=None):
+    """Phase 1: Transcription + NLP split + meaning split + summarize + translate + generate SRTs."""
+    cb = progress_callback or log.progress_callback
+    with redirect_stdout(log), redirect_stderr(log):
+        log.log(f"=== {t('Phase 1: Transcribe & Translate')} ===")
+        _2_asr.transcribe(progress_callback=cb)
+
+        log.log(t("ph_nlp"))
+        _3_1_split_nlp.split_by_spacy()
+
+        log.log(t("ph_meaning"))
+        _3_2_split_meaning.split_sentences_by_meaning()
+
+        log.log(t("ph_sum"))
+        _4_1_summarize.get_summary()
+
+        if load_key("pause_before_translate"):
+            log.log("⚠️ pause_before_translate is ON: edit output/log/terminology.json in the next run "
+                    "before translating. Continuing with current terminology this time.")
+
+        log.log(t("ph_trans"))
+        _4_2_translate.translate_all()
+
+        log.log(t("ph_split"))
+        _5_split_sub.split_for_sub_main()
+
+        log.log(t("ph_gen"))
+        _6_gen_sub.align_timestamp_main()
+
+        log.log(f"=== {t('phase1_done_summary')} ===")
+    log.flush()
+
+def phase3_burn(slot, tracks):
+    """Phase 3: burn one subtitle file. Progress renders where the CTA was
+    (markdown pill mimicking the dark button — buttons can't re-render
+    mid-run without DuplicateWidgetID); the full ffmpeg log stays in the
+    terminal (and in output/log on failure)."""
+    def _cb(step=None, detail=None, percent=None):
+        if detail:
+            cta_progress(slot, detail)
+    cta_progress(slot, t("phase3_starting"))
+    _7_sub_into_vid.merge_subtitles_to_video(tracks=tracks, log_callback=_cb)
+
+@st.fragment
+def text_processing_section():
+    render_stepper()
+
+    with st.container():
+        # ── Phase 1: Transcribe ──
+        st.markdown(f"### {t('Phase 1: Transcribe & Translate')}")
+        phase1_done = os.path.exists(SRC_SRT) and os.path.exists(TRANS_SRT)
+
+        if not phase1_done:
+            slot1 = st.empty()
+            if slot1.button(t("Start Phase 1: Transcribe & Translate"), key="phase1_button",
+                            use_container_width=True, type="primary"):
+                st.session_state["running_phase1"] = True
+                st.session_state.pop("phase1_log", None)
+                log = UILog(st.empty(), title="🚀 Phase 1 started — live log below:")
+
+                def _cb1(step=None, detail=None, percent=None):
+                    if detail:
+                        pct = f" {percent:.0f}%" if isinstance(percent, (int, float)) else ""
+                        cta_progress(slot1, f"{detail}{pct}")
+                    log.progress_callback(step, detail, percent)
+
+                try:
+                    phase1_transcribe(log, progress_callback=_cb1)
+                except Exception as e:
+                    log.log(f"❌ Phase 1 failed: {e}")
+                    log.flush()
+                    st.session_state["phase1_log"] = list(log.lines)
+                    st.session_state["running_phase1"] = False
+                    st.error(f"Phase 1 failed: {e}")
+                else:
+                    st.session_state["phase1_log"] = list(log.lines)
+                    st.session_state["running_phase1"] = False
+                    st.rerun()
+        else:
+            st.success(f"{t('phase1_done_summary')} · {len([p for p in ALL_SRTS if os.path.exists(p)])} SRT")
+            if persist_expander(t("subtitle_files"), "phase1_files", default=False):
+                for label_key, fn in SUBTITLE_OPTIONS:
+                    path = os.path.join("output", fn)
+                    if not os.path.exists(path):
+                        continue
+                    c1, c2, c3 = st.columns([3, 2, 1])
+                    with c1:
+                        st.write(t(label_key))
+                    with c2:
+                        st.caption(_srt_mtime_label(path))
+                    with c3:
+                        with open(path, "r", encoding="utf-8") as f:
+                            st.download_button(t("download"), f.read(), file_name=fn,
+                                               mime="text/plain", key=f"dl_{fn}")
+        _stored_log_box("phase1_log")
+
+        # ── Phase 2: Review & Edit (upload kept, single slot) ──
+        if phase1_done:
+            st.markdown("---")
+            st.markdown(f"### {t('Phase 2: Review & Edit Subtitles')}")
+            st.info(t("phase2_hint"))
+            existing = [(label_key, fn) for label_key, fn in SUBTITLE_OPTIONS
+                        if os.path.exists(os.path.join("output", fn))]
+            labels = [t(k) for k, _ in existing]
+            pick = st.selectbox(t("phase2_pick"), options=labels, key="phase2_pick_sel")
+            chosen_fn = dict(zip(labels, [fn for _, fn in existing]))[pick]
+            _upload_srt_slot(chosen_fn)
+
+        # ── Phase 3: Burn ──
+        if phase1_done:
+            st.markdown("---")
+            st.markdown(f"### {t('Phase 3: Burn Subtitles into Video')}")
+            phase3_done = os.path.exists(SUB_VIDEO)
+
+            if not phase3_done:
+                if load_key("burn_subtitles"):
+                    opts = [(label_key, fn) for label_key, fn in SUBTITLE_OPTIONS
+                            if os.path.exists(os.path.join("output", fn))]
+                    if not opts:
+                        st.warning(t("phase3_no_srt"))
+                    else:
+                        labels = [t(k) for k, _ in opts]
+                        choice = st.radio(t("phase3_pick"), options=labels,
+                                          horizontal=True, key="burn_choice")
+                        chosen_fn = dict(zip(labels, [fn for _, fn in opts]))[choice]
+                        tracks = [os.path.join("output", chosen_fn)]
+
+                        _render_subtitle_preview(chosen_fn)
+
+                        slot3 = st.empty()
+                        if slot3.button(t("Start Phase 3: Burn Subtitles"), key="phase3_button",
+                                        use_container_width=True, type="primary"):
+                            try:
+                                phase3_burn(slot3, tracks)
+                            except Exception as e:
+                                st.error(f"Phase 3 failed: {e}")
+                            else:
+                                st.rerun()
+                else:
+                    st.info(t("phase3_disabled"))
+            else:
+                st.video(SUB_VIDEO)
+                download_subtitle_zip_button(text=t("Download All Srt Files"))
+                if st.button(t("Archive to 'history'"), key="cleanup_in_text_processing"):
+                    cleanup()
+                    st.rerun()
+
+def _upload_srt_slot(filename):
+    """Single upload slot for the selected SRT file, with persistent confirmation."""
+    path = os.path.join("output", filename)
+    flag_key = f"uploaded_ok_{filename}"
+    nonce_key = f"uploader_nonce_{filename}"
+    if nonce_key not in st.session_state:
+        st.session_state[nonce_key] = 0
+
+    uploaded = localized_uploader(key=f"ul_{filename}_{st.session_state[nonce_key]}",
+                                    file_types=["srt"])
+    st.caption(f"{t('upload_edited_file')} · {t('uploader_limit_srt')}")
+    if uploaded is not None:
+        try:
+            content = uploaded.read().decode("utf-8")
+        except UnicodeDecodeError:
+            st.error(t("upload_not_utf8"))
+            return
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(content)
+        st.session_state[flag_key] = datetime.now().strftime("%m-%d %H:%M")
+        st.session_state[nonce_key] += 1  # rotate key so the widget clears
+        st.rerun()
+
+    if os.path.exists(path):
+        if flag_key in st.session_state:
+            st.success(f"{t('uploaded_will_use')} {st.session_state[flag_key]}")
+        else:
+            st.caption(f"{t('on_disk')}: {_srt_mtime_label(path)}")
+
+def _parse_first_srt_lines(path):
+    """Return the text lines of the first subtitle entry in an SRT file."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            content = f.read().strip()
+    except Exception:
+        return []
+    if not content:
+        return []
+    blocks = [b for b in content.split("\n\n") if b.strip()]
+    if not blocks:
+        return []
+    lines = [ln for ln in blocks[0].splitlines() if ln.strip()]
+    text = [ln for ln in lines if "-->" not in ln and not ln.strip().isdigit()]
+    return text if text else lines
+
+def _render_subtitle_preview(srt_filename):
+    """Slim subtitle-band preview matching the actual burn styles.
+
+    Line 1 = yellow on black box (larger), line 2 = white (smaller) —
+    same mapping the burner applies after splitting bilingual entries.
+    """
+    path = os.path.join("output", srt_filename)
+    text_lines = _parse_first_srt_lines(path)
+    if not text_lines:
+        st.warning(f"{srt_filename} {t('preview_empty')}")
+        return
+
+    outline = "-1px 0 0 #000, 1px 0 0 #000, 0 -1px 0 #000, 0 1px 0 #000"
+    rendered = []
+    first = html.escape(text_lines[0].strip())
+    rendered.append(
+        f"<div style=\"display:inline-block;background:#000;padding:3px 14px;"
+        f"font-family:'PingFang SC','Arial Unicode MS',sans-serif;"
+        f"font-size:17px;color:#FFFF00;text-shadow:{outline};"
+        f"line-height:1.5;\">{first}</div>")
+    if len(text_lines) > 1:
+        second = html.escape(text_lines[1].strip())
+        rendered.append(
+            f"<div style=\"font-family:'Arial Unicode MS',sans-serif;"
+            f"font-size:14px;color:#FFFFFF;text-shadow:{outline};"
+            f"line-height:1.5;margin-top:2px;\">{second}</div>")
+
+    st.markdown(
+        "<div style=\"max-width:560px;background:#000;border-radius:8px;"
+        "padding:12px 16px;text-align:center;\">"
+        f"{''.join(rendered)}</div>",
+        unsafe_allow_html=True)
+    st.caption(t("preview_caption"))
 
 def audio_processing_section():
-    st.header(t("c. Dubbing"))
-    with st.container(border=True):
+    with st.container():
         st.markdown(f"""
-        <p style='font-size: 20px;'>
+        <p>
         {t("This stage includes the following steps:")}
-        <p style='font-size: 20px;'>
+        <p>
             1. {t("Generate audio tasks and chunks")}<br>
             2. {t("Extract reference audio")}<br>
             3. {t("Generate and merge audio files")}<br>
             4. {t("Merge final audio into video")}
         """, unsafe_allow_html=True)
         if not os.path.exists(DUB_VIDEO):
-            if st.button(t("Start Audio Processing"), key="audio_processing_button"):
+            if st.button(t("Start Audio Processing"), key="audio_processing_button",
+                         use_container_width=True, type="primary"):
                 process_audio()
                 st.rerun()
         else:
@@ -121,16 +359,21 @@ def main():
     logo_col, _ = st.columns([1,1])
     with logo_col:
         st.image("docs/logo.png", use_column_width=True)
-    st.markdown(button_style, unsafe_allow_html=True)
+    st.markdown(THEME_CSS, unsafe_allow_html=True)
     welcome_text = t("Hello, welcome to VideoLingo. If you encounter any issues, feel free to get instant answers with our Free QA Agent <a href=\"https://share.fastgpt.in/chat/share?shareId=066w11n3r9aq6879r4z0v9rh\" target=\"_blank\">here</a>! You can also try out our SaaS website at <a href=\"https://videolingo.io\" target=\"_blank\">videolingo.io</a> for free!")
-    st.markdown(f"<p style='font-size: 20px; color: #808080;'>{welcome_text}</p>", unsafe_allow_html=True)
-    # add settings
+    st.markdown(f"<p style='color: #78716c;'>{welcome_text}</p>", unsafe_allow_html=True)
     with st.sidebar:
         page_setting()
         st.markdown(give_star_button, unsafe_allow_html=True)
-    download_video_section()
-    text_processing_section()
-    audio_processing_section()
+
+    st.markdown(uploader_i18n_css(), unsafe_allow_html=True)
+
+    tab_sub, tab_dub = st.tabs([t("tab_subtitles"), t("tab_dubbing")])
+    with tab_sub:
+        download_video_section()
+        text_processing_section()
+    with tab_dub:
+        audio_processing_section()
 
 if __name__ == "__main__":
     main()

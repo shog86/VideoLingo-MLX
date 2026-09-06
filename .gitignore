@@ -172,3 +172,8 @@ config.backup.yaml
 runtime/
 dev/
 installer_files/.env
+
+# Local Streamlit secrets and configuration variants
+.streamlit/secrets.toml
+*.local.yaml
+*.local.yml
