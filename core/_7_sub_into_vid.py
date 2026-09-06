@@ -10,7 +10,10 @@ TOP_FONT_SIZE = 20
 BOTTOM_FONT_SIZE = 15
 TOP_FONT_NAME = 'PingFang SC'
 BOTTOM_FONT_NAME = 'Arial Unicode MS'
-TOP_MARGIN_V = 34
+# MarginV diff = line gap: TOP sits above BOTTOM by (TOP_MARGIN_V -
+# BOTTOM_MARGIN_V - BOTTOM_FONT_SIZE). Keep a small gap (~8px in style
+# units): 50 - 27 - 15 = 8, so lines are separated but not far apart.
+TOP_MARGIN_V = 50
 BOTTOM_MARGIN_V = 27
 
 TOP_STYLE = (

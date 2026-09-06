@@ -279,35 +279,44 @@ def _parse_first_srt_lines(path):
     return text if text else lines
 
 def _render_subtitle_preview(srt_filename):
-    """Slim subtitle-band preview matching the actual burn styles.
+    """Preview that mirrors the actual burn styles in _7_sub_into_vid.
 
-    Line 1 = yellow on black box (larger), line 2 = white (smaller) —
-    same mapping the burner applies after splitting bilingual entries.
+    Top line = yellow on semi-opaque black box (BorderStyle=4),
+    bottom line = white with outline+shadow, no box (BorderStyle=1).
+    Sizes and the inter-line gap are derived from the same
+    TOP_/BOTTOM_ constants the burner uses, so overlap/gap shows up here.
     """
+    from core._7_sub_into_vid import (
+        TOP_FONT_SIZE, BOTTOM_FONT_SIZE, TOP_MARGIN_V, BOTTOM_MARGIN_V,
+    )
     path = os.path.join("output", srt_filename)
     text_lines = _parse_first_srt_lines(path)
     if not text_lines:
         st.warning(f"{srt_filename} {t('preview_empty')}")
         return
 
-    outline = "-1px 0 0 #000, 1px 0 0 #000, 0 -1px 0 #000, 0 1px 0 #000"
+    # Real burn gap in style units: top baseline offset minus bottom
+    # offset minus bottom line height. Clamp so preview never overlaps
+    # differently from the burn.
+    gap_px = max(4, TOP_MARGIN_V - BOTTOM_MARGIN_V - BOTTOM_FONT_SIZE)
+    outline = "-1px 0 0 #000, 1px 0 0 #000, 0 -1px 0 #000, 0 1px 0 #000, 1px 1px 2px rgba(0,0,0,0.8)"
     rendered = []
     first = html.escape(text_lines[0].strip())
     rendered.append(
-        f"<div style=\"display:inline-block;background:#000;padding:3px 14px;"
+        f"<div style=\"display:inline-block;background:rgba(0,0,0,0.9);padding:2px 12px;"
         f"font-family:'PingFang SC','Arial Unicode MS',sans-serif;"
-        f"font-size:17px;color:#FFFF00;text-shadow:{outline};"
-        f"line-height:1.5;\">{first}</div>")
+        f"font-size:{TOP_FONT_SIZE}px;color:#FFFF00;text-shadow:{outline};"
+        f"line-height:1.25;\">{first}</div>")
     if len(text_lines) > 1:
         second = html.escape(text_lines[1].strip())
         rendered.append(
             f"<div style=\"font-family:'Arial Unicode MS',sans-serif;"
-            f"font-size:14px;color:#FFFFFF;text-shadow:{outline};"
-            f"line-height:1.5;margin-top:2px;\">{second}</div>")
+            f"font-size:{BOTTOM_FONT_SIZE}px;color:#FFFFFF;text-shadow:{outline};"
+            f"line-height:1.25;margin-top:{gap_px}px;\">{second}</div>")
 
     st.markdown(
-        "<div style=\"max-width:560px;background:#000;border-radius:8px;"
-        "padding:12px 16px;text-align:center;\">"
+        "<div style=\"max-width:560px;background:#3a3a3a;border-radius:8px;"
+        "padding:28px 16px 12px 16px;text-align:center;\">"
         f"{''.join(rendered)}</div>",
         unsafe_allow_html=True)
     st.caption(t("preview_caption"))

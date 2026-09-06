@@ -2605,7 +2605,7 @@ wheels = [
 ]
 
 [[package]]
-name = "videolingo"
+name = "videolingo-mlx"
 version = "3.0.0"
 source = { virtual = "." }
 dependencies = [
