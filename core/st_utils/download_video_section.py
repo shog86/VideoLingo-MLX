@@ -44,8 +44,9 @@ def download_video_section():
                 res_display = st.selectbox(t("Resolution"), options=res_options, index=default_idx)
                 res = res_dict[res_display]
             dl_slot = st.empty()
+            has_url = bool(url and url.strip())
             if dl_slot.button(t("Download Video"), key="download_button", use_container_width=True,
-                              type="primary"):
+                              type="primary", disabled=not has_url):
                 if url:
                     last_step = [-1]
 
@@ -73,26 +74,32 @@ def download_video_section():
                     download_video_ytdlp(url, resolution=res, progress_callback=_dl_progress)
                     st.rerun()
 
-            uploaded_file = localized_uploader(
-                key="video_upload",
-                file_types=load_key("allowed_video_formats") + load_key("allowed_audio_formats"))
-            st.caption(f"{t('Or upload video')} · {t('uploader_limit_video')}")
-            if uploaded_file:
-                if os.path.exists(OUTPUT_DIR):
-                    shutil.rmtree(OUTPUT_DIR)
-                os.makedirs(OUTPUT_DIR, exist_ok=True)
-                
-                raw_name = uploaded_file.name.replace(' ', '_')
-                name, ext = os.path.splitext(raw_name)
-                clean_name = re.sub(r'[^\w\-_\.]', '', name) + ext.lower()
-                    
-                with open(os.path.join(OUTPUT_DIR, clean_name), "wb") as f:
-                    f.write(uploaded_file.getbuffer())
-
-                media_path = os.path.join(OUTPUT_DIR, clean_name)
-                media_ext = ext.lower().lstrip(".")
-                media_type = "video" if media_ext in load_key("allowed_video_formats") else "audio"
-                write_input_manifest(media_path, media_type)
-                st.rerun()
+            # Either-or: a pasted YouTube link and the file uploader are
+            # mutually exclusive — once a link is entered the upload entry
+            # is hidden so a download run can't race with a file pick.
+            if has_url:
+                st.caption(t("dl_link_entered_hint"))
             else:
-                return False
+                uploaded_file = localized_uploader(
+                    key="video_upload",
+                    file_types=load_key("allowed_video_formats") + load_key("allowed_audio_formats"))
+                st.caption(f"{t('Or upload video')} · {t('uploader_limit_video')}")
+                if uploaded_file:
+                    if os.path.exists(OUTPUT_DIR):
+                        shutil.rmtree(OUTPUT_DIR)
+                    os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+                    raw_name = uploaded_file.name.replace(' ', '_')
+                    name, ext = os.path.splitext(raw_name)
+                    clean_name = re.sub(r'[^\w\-_\.]', '', name) + ext.lower()
+
+                    with open(os.path.join(OUTPUT_DIR, clean_name), "wb") as f:
+                        f.write(uploaded_file.getbuffer())
+
+                    media_path = os.path.join(OUTPUT_DIR, clean_name)
+                    media_ext = ext.lower().lstrip(".")
+                    media_type = "video" if media_ext in load_key("allowed_video_formats") else "audio"
+                    write_input_manifest(media_path, media_type)
+                    st.rerun()
+                else:
+                    return False

@@ -39,6 +39,13 @@ def download_video_ytdlp(url, save_path='output', resolution='1080', progress_ca
         'postprocessors': [{'key': 'FFmpegThumbnailsConvertor', 'format': 'jpg'}],
     }
 
+    # yt-dlp merges bestvideo+bestaudio via ffmpeg. Point it at the binary
+    # directly so downloads don't depend on the parent shell's PATH
+    # (Homebrew's bin dir is often missing there on macOS).
+    _ffmpeg = ensure_ffmpeg_in_path()
+    if _ffmpeg:
+        ydl_opts["ffmpeg_location"] = os.path.dirname(_ffmpeg) or _ffmpeg
+
     # Read Youtube Cookie File
     cookies_path = load_key("youtube.cookies_path")
     if os.path.exists(cookies_path):

@@ -5,6 +5,14 @@ from datetime import datetime
 
 os.environ["TORCHAUDIO_USE_BACKEND_DISPATCHER"] = "1"
 
+# ffmpeg often lives outside the parent shell's PATH on macOS (Homebrew).
+# Patch PATH inline here (before any core import pulls in pydub) so no
+# module ever observes a PATH without ffmpeg; core code additionally uses
+# core.utils.ffmpeg_utils for direct binary lookup.
+for _bin in ("/opt/homebrew/bin", "/usr/local/bin"):
+    if os.path.isdir(_bin) and _bin not in os.environ.get("PATH", "").split(os.pathsep):
+        os.environ["PATH"] = _bin + os.pathsep + os.environ.get("PATH", "")
+
 from core.st_utils.imports_and_utils import *
 from core.st_utils.ui_log import UILog
 from core.st_utils.i18n_widgets import persist_expander
@@ -47,8 +55,12 @@ def _has_media():
     except Exception:
         return False
 
-def render_stepper():
-    """Slim 4-step pipeline status bar derived from files on disk."""
+# Anchor ids for the four pipeline sections (stepper links jump here,
+# and the app auto-scrolls here when the active step changes).
+STEP_ANCHORS = ["anchor-download", "anchor-phase1", "anchor-phase2", "anchor-phase3"]
+
+def pipeline_status():
+    """(steps, active_idx): file-on-disk derived pipeline state."""
     steps = [
         ("step_download", _has_media()),
         ("step_transcribe", os.path.exists(SRC_SRT) and os.path.exists(TRANS_SRT)),
@@ -57,6 +69,34 @@ def render_stepper():
     ]
     # first incomplete step is the active one
     active_idx = next((i for i, (_, done) in enumerate(steps) if not done), len(steps))
+    return steps, active_idx
+
+def anchor(name):
+    st.markdown(f"<div id='{name}' style='scroll-margin-top:70px;'></div>",
+                unsafe_allow_html=True)
+
+def maybe_autoscroll(active_idx):
+    """Scroll the page to the active step's section, once per step change.
+
+    Only fires when the active step actually advanced/completed (tracked in
+    session state), so free browsing is never yanked around. No-op on first
+    load and when the target section isn't rendered yet.
+    """
+    target = STEP_ANCHORS[min(active_idx, len(STEP_ANCHORS) - 1)]
+    last = st.session_state.get("_last_active_step")
+    st.session_state["_last_active_step"] = active_idx
+    if last is None or last == active_idx:
+        return
+    import streamlit.components.v1 as components
+    components.html(
+        "<script>"
+        f"var el = window.parent.document.getElementById('{target}');"
+        "if (el) { el.scrollIntoView({behavior: 'smooth', block: 'start'}); }"
+        "</script>",
+        height=0)
+
+def render_stepper(steps, active_idx):
+    """Slim 4-step pipeline status bar; each pill links to its section."""
     items = []
     for i, (key, done) in enumerate(steps):
         if done:
@@ -66,9 +106,10 @@ def render_stepper():
         else:
             bg, fg, mark = "transparent", "#a8a29e", "○"
         items.append(
-            f"<div style='flex:1;text-align:center;background:{bg};color:{fg};"
+            f"<a href='#{STEP_ANCHORS[i]}' style='flex:1;text-decoration:none;'>"
+            f"<div style='text-align:center;background:{bg};color:{fg};"
             f"border-radius:10px;padding:8px 4px;font-size:14px;font-weight:600;'>"
-            f"{mark} {t(key)}</div>")
+            f"{mark} {t(key)}</div></a>")
         if i < len(steps) - 1:
             items.append("<div style='align-self:center;color:#a8a29e;padding:0 4px;'>→</div>")
     st.markdown(f"<div style='display:flex;align-items:stretch;margin:4px 0 12px 0;'>"
@@ -131,10 +172,9 @@ def phase3_burn(slot, tracks):
 
 @st.fragment
 def text_processing_section():
-    render_stepper()
-
     with st.container():
         # ── Phase 1: Transcribe ──
+        anchor("anchor-phase1")
         st.markdown(f"### {t('Phase 1: Transcribe & Translate')}")
         phase1_done = os.path.exists(SRC_SRT) and os.path.exists(TRANS_SRT)
 
@@ -185,6 +225,7 @@ def text_processing_section():
         # ── Phase 2: Review & Edit (upload kept, single slot) ──
         if phase1_done:
             st.markdown("---")
+            anchor("anchor-phase2")
             st.markdown(f"### {t('Phase 2: Review & Edit Subtitles')}")
             st.info(t("phase2_hint"))
             existing = [(label_key, fn) for label_key, fn in SUBTITLE_OPTIONS
@@ -197,6 +238,7 @@ def text_processing_section():
         # ── Phase 3: Burn ──
         if phase1_done:
             st.markdown("---")
+            anchor("anchor-phase3")
             st.markdown(f"### {t('Phase 3: Burn Subtitles into Video')}")
             phase3_done = os.path.exists(SUB_VIDEO)
 
@@ -380,6 +422,10 @@ def main():
 
     tab_sub, tab_dub = st.tabs([t("tab_subtitles"), t("tab_dubbing")])
     with tab_sub:
+        steps, active_idx = pipeline_status()
+        render_stepper(steps, active_idx)
+        maybe_autoscroll(active_idx)
+        anchor("anchor-download")
         download_video_section()
         text_processing_section()
     with tab_dub:

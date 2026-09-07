@@ -1,2 +1,10 @@
 [server]
 maxUploadSize = 4096
+
+[theme]
+# CTA (type="primary") fill — must stay dark stone, never Streamlit's default red
+primaryColor = "#1c1917"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f5f5f4"
+textColor = "#1c1917"
+font = "sans serif"

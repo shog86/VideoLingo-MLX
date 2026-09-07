@@ -195,5 +195,6 @@
     "ph_trans": "--- Translating (LLM, parallel chunks) ---",
     "ph_split": "--- Splitting & aligning subtitles ---",
     "ph_gen": "--- Generating SRT files ---",
-    "dl_finalizing": "Download finished, merging…"
+    "dl_finalizing": "Download finished, merging…",
+    "dl_link_entered_hint": "Lien YouTube saisi — le téléversement est masqué. Effacez le lien pour téléverser un fichier."
 }

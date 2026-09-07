@@ -191,5 +191,6 @@
     "ph_trans": "--- 翻譯（LLM 並行）---",
     "ph_split": "--- 切分並對齊字幕 ---",
     "ph_gen": "--- 生成 SRT 檔案 ---",
-    "dl_finalizing": "下載完成，正在合併…"
+    "dl_finalizing": "下載完成，正在合併…",
+    "dl_link_entered_hint": "已輸入 YouTube 連結，上傳入口已隱藏。清空連結可改用上傳檔案。"
 }

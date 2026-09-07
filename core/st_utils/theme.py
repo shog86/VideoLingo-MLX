@@ -31,13 +31,32 @@ div[data-testid="stMarkdownContainer"] small {
 
 /* ---------- buttons: native kinds, one radius + text scale ----------
    Hierarchy via Streamlit's own system: primary (dark fill) for CTAs,
-   secondary (subtle outline) for the rest. No per-kind overrides: the
-   button kind does not reach the DOM on this Streamlit version. */
+   secondary (subtle outline) for the rest. The [theme] primaryColor in
+   .streamlit/config.toml is the source of truth; the kind selectors below
+   are belt-and-braces so a primary CTA can never render in Streamlit's
+   default red (e.g. theme cache / config not picked up). */
 div[data-testid="stButton"] > button,
 div[data-testid="stDownloadButton"] > button {
     border-radius: 10px !important;
     font-size: 14px !important;
     font-weight: 600 !important;
+}
+div[data-testid="stButton"] > button[kind="primary"],
+div[data-testid="stButton"] > button[kind="primaryFormSubmit"] {
+    background-color: #1c1917 !important;
+    border-color: #1c1917 !important;
+    color: #ffffff !important;
+}
+div[data-testid="stButton"] > button[kind="primary"]:hover,
+div[data-testid="stButton"] > button[kind="primary"]:focus:not(:active) {
+    background-color: #292524 !important;
+    border-color: #292524 !important;
+    color: #ffffff !important;
+}
+div[data-testid="stButton"] > button[kind="primary"]:disabled {
+    background-color: #a8a29e !important;
+    border-color: #a8a29e !important;
+    color: #ffffff !important;
 }
 div[data-testid="stDownloadButton"] > button {
     font-size: 13px !important;
