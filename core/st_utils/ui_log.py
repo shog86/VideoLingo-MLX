@@ -11,6 +11,7 @@ rprint output. Writes from worker threads are buffered and flushed on the
 next main-thread write (Streamlit widget calls are main-thread only).
 """
 import re
+import sys
 import threading
 import time
 
@@ -27,6 +28,10 @@ class UILog:
         self.min_interval = min_interval
         self._last = 0.0
         self._lock = threading.Lock()
+        # Tee everything to the real terminal too, so `streamlit run` output
+        # stays useful even though stdout is redirected into the UI box.
+        # sys.__stdout__ is captured here (before redirect_stdout swaps it).
+        self._term = sys.__stdout__
         # Streamlit runs user scripts in a ScriptRunner thread, NOT the main
         # thread — so gate UI updates on the creating (script) thread, and
         # only buffer writes coming from worker threads (e.g. ThreadPoolExecutor).
@@ -38,8 +43,10 @@ class UILog:
         return threading.current_thread() is self._owner
 
     def _clean(self, s):
-        # Collapse carriage-return redraws (rich progress bars) to last segment
-        s = s.replace('\r', '\n')
+        # Collapse carriage-return redraws (rich progress bars) to the last
+        # segment — otherwise each Live refresh becomes a new log line and
+        # floods the box with hundreds of near-identical rows.
+        s = '\n'.join(part.split('\r')[-1] for part in (s if isinstance(s, str) else str(s)).split('\n'))
         s = _ANSI_RE.sub('', s)
         return s
 
@@ -47,7 +54,12 @@ class UILog:
         """File-like write so this object works with redirect_stdout."""
         if not s:
             return 0
-        text = self._clean(s if isinstance(s, str) else str(s))
+        raw = s if isinstance(s, str) else str(s)
+        try:
+            self._term.write(raw)
+        except Exception:
+            pass
+        text = self._clean(raw)
         new = [ln.rstrip() for ln in text.split('\n') if ln.strip()]
         if not new:
             return len(s)
@@ -68,6 +80,10 @@ class UILog:
             pass
 
     def flush(self):
+        try:
+            self._term.flush()
+        except Exception:
+            pass
         with self._lock:
             if self._on_owner_thread():
                 self._last = 0.0

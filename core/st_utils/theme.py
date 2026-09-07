@@ -89,6 +89,35 @@ button[data-testid="stTab"] p {
     font-weight: 600 !important;
 }
 
+/* ---------- sticky tabs + stepper (stay visible on scroll) ----------
+   NOTE: Streamlit's own header is `position:fixed;height:3.75rem` with a
+   solid background, so sticky bars must sit *below* it (top >= 3.75rem),
+   otherwise they slide underneath it and look like they "disappear". */
+div[data-testid="stTabs"] > div[data-baseweb="tab-list"] {
+    position: sticky;
+    top: 3.75rem;
+    z-index: 999;
+    background-color: #ffffff;
+    padding-top: 8px;
+}
+/* the stepper markdown itself is tiny — stick its outer container instead
+   (sticky on the inner div alone never leaves its parent's box).
+   Offset = header (3.75rem) + tab-list height (~56px). */
+div[data-testid="stElementContainer"]:has(.stepper-sticky) {
+    position: sticky;
+    top: calc(3.75rem + 56px);
+    z-index: 998;
+    background-color: #ffffff;
+    padding: 8px 0 8px 0;
+}
+/* let sticky escape the tab panel */
+div[data-testid="stTabs"] div[data-baseweb="tab-panel"] {
+    overflow: visible;
+}
+.stepper-sticky {
+    background-color: #ffffff;
+}
+
 /* ---------- code / log blocks ---------- */
 div[data-testid="stCode"] {
     border-radius: 10px !important;

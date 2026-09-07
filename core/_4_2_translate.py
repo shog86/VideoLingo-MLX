@@ -54,9 +54,15 @@ def similar(a, b):
 
 # 🚀 Main function to translate all chunks
 @check_file_exists(_4_2_TRANSLATION)
-def translate_all():
+def translate_all(progress_callback=None):
     console.print("[bold green]Start Translating All...[/bold green]")
     chunks = split_chunks_by_chars(chunk_size=600, max_i=10)
+    total = len(chunks)
+    if progress_callback:
+        try:
+            progress_callback(step="translate", detail=f"Translating chunks 0/{total}", percent=0)
+        except Exception:
+            pass
     with open(_4_1_TERMINOLOGY, 'r', encoding='utf-8') as file:
         theme_prompt = json.load(file).get('theme')
 
@@ -72,6 +78,18 @@ def translate_all():
             for future in concurrent.futures.as_completed(futures):
                 results.append(future.result())
                 progress.update(task, advance=1)
+                # Owner-thread log: flushes worker-thread output to the UI
+                # and drives the CTA progress pill (translate_all previously
+                # reported nothing, so the UI looked frozen for the whole step).
+                done = len(results)
+                console.print(f"Translating chunks {done}/{total}...")
+                if progress_callback:
+                    try:
+                        progress_callback(step="translate",
+                                          detail=f"Translating chunks {done}/{total}",
+                                          percent=done / total * 100 if total else 100)
+                    except Exception:
+                        pass
 
     results.sort(key=lambda x: x[0])  # Sort results based on original order
     

@@ -72,7 +72,7 @@ def pipeline_status():
     return steps, active_idx
 
 def anchor(name):
-    st.markdown(f"<div id='{name}' style='scroll-margin-top:70px;'></div>",
+    st.markdown(f"<div id='{name}' style='scroll-margin-top:190px;'></div>",
                 unsafe_allow_html=True)
 
 def maybe_autoscroll(active_idx):
@@ -112,7 +112,7 @@ def render_stepper(steps, active_idx):
             f"{mark} {t(key)}</div></a>")
         if i < len(steps) - 1:
             items.append("<div style='align-self:center;color:#a8a29e;padding:0 4px;'>→</div>")
-    st.markdown(f"<div style='display:flex;align-items:stretch;margin:4px 0 12px 0;'>"
+    st.markdown(f"<div class='stepper-sticky' style='display:flex;align-items:stretch;margin:4px 0 12px 0;'>"
                 f"{''.join(items)}</div>", unsafe_allow_html=True)
 
 def _srt_mtime_label(path):
@@ -148,7 +148,7 @@ def phase1_transcribe(log, progress_callback=None):
                     "before translating. Continuing with current terminology this time.")
 
         log.log(t("ph_trans"))
-        _4_2_translate.translate_all()
+        _4_2_translate.translate_all(progress_callback=cb)
 
         log.log(t("ph_split"))
         _5_split_sub.split_for_sub_main()
@@ -184,7 +184,10 @@ def text_processing_section():
                             use_container_width=True, type="primary"):
                 st.session_state["running_phase1"] = True
                 st.session_state.pop("phase1_log", None)
-                log = UILog(st.empty(), title="🚀 Phase 1 started — live log below:")
+                # Live log stays collapsed by default (and tees to the
+                # terminal) — the page only keeps the progress pill on top.
+                log_expander = st.expander(t("run_log"), expanded=False)
+                log = UILog(log_expander.empty(), title="🚀 Phase 1 started — live log below:")
 
                 def _cb1(step=None, detail=None, percent=None):
                     if detail:
