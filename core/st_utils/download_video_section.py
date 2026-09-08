@@ -13,7 +13,7 @@ OUTPUT_DIR = "output"
 
 @st.fragment
 def download_video_section():
-    st.header(t("a. Download or Upload Video"))
+    st.header(t("section_download"))
     with st.container():
         try:
             media_file, media_type = find_media_file()

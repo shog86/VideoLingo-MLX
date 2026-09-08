@@ -128,10 +128,10 @@ def _stored_log_box(session_key):
             st.code("\n".join(lines[-300:]), language="text")
 
 def phase1_transcribe(log, progress_callback=None):
-    """Phase 1: Transcription + NLP split + meaning split + summarize + translate + generate SRTs."""
+    """Step 2 (Transcribe): Transcription + NLP split + meaning split + summarize + translate + generate SRTs."""
     cb = progress_callback or log.progress_callback
     with redirect_stdout(log), redirect_stderr(log):
-        log.log(f"=== {t('Phase 1: Transcribe & Translate')} ===")
+        log.log(f"=== {t('section_transcribe')} ===")
         _2_asr.transcribe(progress_callback=cb)
 
         log.log(t("ph_nlp"))
@@ -160,7 +160,7 @@ def phase1_transcribe(log, progress_callback=None):
     log.flush()
 
 def phase3_burn(slot, tracks):
-    """Phase 3: burn one subtitle file. Progress renders where the CTA was
+    """Step 4 (Burn): burn one subtitle file. Progress renders where the CTA was
     (markdown pill mimicking the dark button — buttons can't re-render
     mid-run without DuplicateWidgetID); the full ffmpeg log stays in the
     terminal (and in output/log on failure)."""
@@ -173,21 +173,21 @@ def phase3_burn(slot, tracks):
 @st.fragment
 def text_processing_section():
     with st.container():
-        # ── Phase 1: Transcribe ──
+        # ── Step 2: Transcribe ──
         anchor("anchor-phase1")
-        st.markdown(f"### {t('Phase 1: Transcribe & Translate')}")
+        st.markdown(f"### {t('section_transcribe')}")
         phase1_done = os.path.exists(SRC_SRT) and os.path.exists(TRANS_SRT)
 
         if not phase1_done:
             slot1 = st.empty()
-            if slot1.button(t("Start Phase 1: Transcribe & Translate"), key="phase1_button",
+            if slot1.button(t("start_transcribe"), key="phase1_button",
                             use_container_width=True, type="primary"):
                 st.session_state["running_phase1"] = True
                 st.session_state.pop("phase1_log", None)
                 # Live log stays collapsed by default (and tees to the
                 # terminal) — the page only keeps the progress pill on top.
                 log_expander = st.expander(t("run_log"), expanded=False)
-                log = UILog(log_expander.empty(), title="🚀 Phase 1 started — live log below:")
+                log = UILog(log_expander.empty(), title=f"🚀 {t('start_transcribe')}…")
 
                 def _cb1(step=None, detail=None, percent=None):
                     if detail:
@@ -198,11 +198,11 @@ def text_processing_section():
                 try:
                     phase1_transcribe(log, progress_callback=_cb1)
                 except Exception as e:
-                    log.log(f"❌ Phase 1 failed: {e}")
+                    log.log(f"❌ {t('section_transcribe')} failed: {e}")
                     log.flush()
                     st.session_state["phase1_log"] = list(log.lines)
                     st.session_state["running_phase1"] = False
-                    st.error(f"Phase 1 failed: {e}")
+                    st.error(f"{t('section_transcribe')} failed: {e}")
                 else:
                     st.session_state["phase1_log"] = list(log.lines)
                     st.session_state["running_phase1"] = False
@@ -225,11 +225,11 @@ def text_processing_section():
                                                mime="text/plain", key=f"dl_{fn}")
         _stored_log_box("phase1_log")
 
-        # ── Phase 2: Review & Edit (upload kept, single slot) ──
+        # ── Step 3: Review (upload kept, single slot) ──
         if phase1_done:
             st.markdown("---")
             anchor("anchor-phase2")
-            st.markdown(f"### {t('Phase 2: Review & Edit Subtitles')}")
+            st.markdown(f"### {t('section_review')}")
             st.info(t("phase2_hint"))
             existing = [(label_key, fn) for label_key, fn in SUBTITLE_OPTIONS
                         if os.path.exists(os.path.join("output", fn))]
@@ -238,11 +238,11 @@ def text_processing_section():
             chosen_fn = dict(zip(labels, [fn for _, fn in existing]))[pick]
             _upload_srt_slot(chosen_fn)
 
-        # ── Phase 3: Burn ──
+        # ── Step 4: Burn ──
         if phase1_done:
             st.markdown("---")
             anchor("anchor-phase3")
-            st.markdown(f"### {t('Phase 3: Burn Subtitles into Video')}")
+            st.markdown(f"### {t('section_burn')}")
             phase3_done = os.path.exists(SUB_VIDEO)
 
             if not phase3_done:
@@ -261,12 +261,12 @@ def text_processing_section():
                         _render_subtitle_preview(chosen_fn)
 
                         slot3 = st.empty()
-                        if slot3.button(t("Start Phase 3: Burn Subtitles"), key="phase3_button",
+                        if slot3.button(t("start_burn"), key="phase3_button",
                                         use_container_width=True, type="primary"):
                             try:
                                 phase3_burn(slot3, tracks)
                             except Exception as e:
-                                st.error(f"Phase 3 failed: {e}")
+                                st.error(f"{t('section_burn')} failed: {e}")
                             else:
                                 st.rerun()
                 else:
