@@ -15,7 +15,7 @@ for _bin in ("/opt/homebrew/bin", "/usr/local/bin"):
 
 from core.st_utils.imports_and_utils import *
 from core.st_utils.ui_log import UILog
-from core.st_utils.i18n_widgets import persist_expander
+from core.st_utils.i18n_widgets import section_expander
 from core.st_utils.theme import THEME_CSS
 from core import *
 
@@ -175,13 +175,17 @@ def text_processing_section():
     with st.container():
         # ── Step 2: Transcribe ──
         anchor("anchor-phase1")
-        st.markdown(f"### {t('section_transcribe')}")
+        st.header(t("section_transcribe"))
         phase1_done = os.path.exists(SRC_SRT) and os.path.exists(TRANS_SRT)
 
         if not phase1_done:
             slot1 = st.empty()
+            has_media = _has_media()
+            if not has_media:
+                st.caption(t("need_media_first"))
             if slot1.button(t("start_transcribe"), key="phase1_button",
-                            use_container_width=True, type="primary"):
+                            use_container_width=True, type="primary",
+                            disabled=not has_media):
                 st.session_state["running_phase1"] = True
                 st.session_state.pop("phase1_log", None)
                 # Live log stays collapsed by default (and tees to the
@@ -209,7 +213,7 @@ def text_processing_section():
                     st.rerun()
         else:
             st.success(f"{t('phase1_done_summary')} · {len([p for p in ALL_SRTS if os.path.exists(p)])} SRT")
-            if persist_expander(t("subtitle_files"), "phase1_files", default=False):
+            with section_expander(t("subtitle_files"), "phase1_files", default=False):
                 for label_key, fn in SUBTITLE_OPTIONS:
                     path = os.path.join("output", fn)
                     if not os.path.exists(path):
@@ -229,7 +233,7 @@ def text_processing_section():
         if phase1_done:
             st.markdown("---")
             anchor("anchor-phase2")
-            st.markdown(f"### {t('section_review')}")
+            st.header(t("section_review"))
             st.info(t("phase2_hint"))
             existing = [(label_key, fn) for label_key, fn in SUBTITLE_OPTIONS
                         if os.path.exists(os.path.join("output", fn))]
@@ -242,7 +246,7 @@ def text_processing_section():
         if phase1_done:
             st.markdown("---")
             anchor("anchor-phase3")
-            st.markdown(f"### {t('section_burn')}")
+            st.header(t("section_burn"))
             phase3_done = os.path.exists(SUB_VIDEO)
 
             if not phase3_done:

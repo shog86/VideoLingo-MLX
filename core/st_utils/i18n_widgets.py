@@ -8,9 +8,10 @@ If a future Streamlit changes the DOM, the selectors silently stop matching
 and the English originals show — nothing breaks.
 """
 import html
+from contextlib import contextmanager
 
 import streamlit as st
-from core.utils.config_utils import load_key, update_key
+from core.utils.config_utils import load_key
 from translations.translations import translate as t
 
 
@@ -30,34 +31,21 @@ def cta_progress(slot, text):
         unsafe_allow_html=True)
 
 
-def _save_ui_state(ui_key, widget_key):
-    try:
-        update_key(f"ui.{ui_key}", bool(st.session_state[widget_key]))
-    except KeyError:
-        pass
+@contextmanager
+def section_expander(label, ui_key, default=False):
+    """Native expander whose initial open/close state comes from config.yaml.
 
-
-def persist_expander(label, ui_key, default=False):
-    """Collapsible section whose open/close state persists in config.yaml.
-
-    Rendered as a checkbox (☐/☑ + ▸/▾ arrow + title): visually distinct from
-    both the on/off toggles and the action buttons, with zero custom CSS.
-    No explicit st.rerun(): callers live inside @st.fragment sections, so
-    interaction auto-reruns only that fragment (no full-page jitter).
-    Outside a fragment it degrades to a normal full rerun — still correct.
+    Single click to open/close (Streamlit keeps the toggled state for the
+    rest of the session). Replaces the old checkbox-driven collapsible,
+    whose manual widget-state/config sync could desync and needed an extra
+    click to collapse.
     """
     try:
         saved = bool(load_key(f"ui.{ui_key}"))
     except KeyError:
         saved = default
-    widget_key = f"ui_sec_{ui_key}"
-    if widget_key not in st.session_state:
-        st.session_state[widget_key] = saved
-    current = bool(st.session_state[widget_key])
-    arrow = "▾" if current else "▸"
-    st.checkbox(f"{arrow}  {label}", key=widget_key,
-                on_change=_save_ui_state, args=(ui_key, widget_key))
-    return current
+    with st.expander(label, expanded=saved):
+        yield
 
 
 def uploader_i18n_css():

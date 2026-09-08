@@ -1,7 +1,7 @@
 import streamlit as st
 from translations.translations import translate as t
 from translations.translations import DISPLAY_LANGUAGES
-from core.st_utils.i18n_widgets import persist_expander
+from core.st_utils.i18n_widgets import section_expander
 from core.utils import *
 
 def config_input(label, key, help=None):
@@ -24,23 +24,20 @@ def page_setting():
     # with st.expander(t("Youtube Settings"), expanded=True):
     #     config_input(t("Cookies Path"), "youtube.cookies_path")
 
-    if persist_expander(t("LLM Configuration"), "sidebar_llm", default=True):
+    with section_expander(t("LLM Configuration"), "sidebar_llm", default=True):
         config_input(t("API_KEY"), "api.key")
         config_input(t("BASE_URL"), "api.base_url", help=t("Openai format, will add /v1/chat/completions automatically"))
-        
-        c1, c2 = st.columns([4, 1])
-        with c1:
-            config_input(t("MODEL"), "api.model", help=t("click to check API validity")+ " 👉")
-            config_input(t("Hugging Face Token"), "api.huggingface_token", help=t("Required for pyannote speaker diarization"))
-        with c2:
-            if st.button("📡", key="api"):
-                st.toast(t("API Key is valid") if check_api() else t("API Key is invalid"), 
-                        icon="✅" if check_api() else "❌")
+
+        config_input(t("MODEL"), "api.model")
+        if st.button(t("check_api_connection"), key="api"):
+            st.toast(t("API Key is valid") if check_api() else t("API Key is invalid"),
+                    icon="✅" if check_api() else "❌")
+        config_input(t("Hugging Face Token"), "api.huggingface_token", help=t("Required for pyannote speaker diarization"))
         llm_support_json = st.toggle(t("LLM JSON Format Support"), value=load_key("api.llm_support_json"), help=t("Enable if your LLM supports JSON mode output"))
         if llm_support_json != load_key("api.llm_support_json"):
             update_key("api.llm_support_json", llm_support_json)
             st.rerun()
-    if persist_expander(t("Subtitles Settings"), "sidebar_subtitles", default=True):
+    with section_expander(t("Subtitles Settings"), "sidebar_subtitles", default=True):
         c1, c2 = st.columns(2)
         with c1:
             langs = {
@@ -75,7 +72,7 @@ def page_setting():
         if demucs != load_key("demucs"):
             update_key("demucs", demucs)
             st.rerun()
-        
+
         burn_subtitles = st.toggle(t("Burn-in Subtitles"), value=load_key("burn_subtitles"), help=t("Whether to burn subtitles into the video, will increase processing time"))
         if burn_subtitles != load_key("burn_subtitles"):
             update_key("burn_subtitles", burn_subtitles)
@@ -89,7 +86,7 @@ def page_setting():
                 update_key("ffmpeg_gpu", True)
         except KeyError:
             pass
-    if persist_expander(t("Dubbing Settings"), "sidebar_dubbing", default=True):
+    with section_expander(t("Dubbing Settings"), "sidebar_dubbing", default=True):
         tts_methods = ["azure_tts", "openai_tts", "fish_tts", "sf_fish_tts", "edge_tts", "gpt_sovits", "custom_tts", "sf_cosyvoice2", "f5tts"]
         select_tts = st.selectbox(t("TTS Method"), options=tts_methods, index=tts_methods.index(load_key("tts_method")))
         if select_tts != load_key("tts_method"):
@@ -99,7 +96,7 @@ def page_setting():
         # sub settings for each tts method
         if select_tts == "sf_fish_tts":
             config_input(t("SiliconFlow API Key"), "sf_fish_tts.api_key")
-            
+
             # Add mode selection dropdown
             mode_options = {
                 "preset": t("Preset"),
@@ -132,11 +129,11 @@ def page_setting():
         elif select_tts == "azure_tts":
             config_input("302ai API", "azure_tts.api_key")
             config_input(t("Azure Voice"), "azure_tts.voice")
-        
+
         elif select_tts == "gpt_sovits":
             st.info(t("Please refer to Github homepage for GPT_SoVITS configuration"))
             config_input(t("SoVITS Character"), "gpt_sovits.character")
-            
+
             refer_mode_options = {1: t("Mode 1: Use provided reference audio only"), 2: t("Mode 2: Use first audio from video as reference"), 3: t("Mode 3: Use each audio from video as reference")}
             selected_refer_mode = st.selectbox(
                 t("Refer Mode"),
@@ -148,13 +145,13 @@ def page_setting():
             if selected_refer_mode != load_key("gpt_sovits.refer_mode"):
                 update_key("gpt_sovits.refer_mode", selected_refer_mode)
                 st.rerun()
-                
+
         elif select_tts == "edge_tts":
             config_input(t("Edge TTS Voice"), "edge_tts.voice")
 
         elif select_tts == "sf_cosyvoice2":
             config_input(t("SiliconFlow API Key"), "sf_cosyvoice2.api_key")
-        
+
         elif select_tts == "f5tts":
             config_input("302ai API", "f5tts.302_api")
         
