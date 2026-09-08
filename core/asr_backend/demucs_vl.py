@@ -29,7 +29,7 @@ def demucs_audio():
     
     console.print("🤖 Loading <htdemucs> model...")
     model = get_model('htdemucs')
-    separator = PreloadedSeparator(model=model, shifts=1, overlap=0.25)
+    separator = PreloadedSeparator(model=model, shifts=0, overlap=0.25)
     
     console.print("🎵 Separating audio...")
     _, outputs = separator.separate_audio_file(_RAW_AUDIO_FILE)
