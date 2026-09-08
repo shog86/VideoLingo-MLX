@@ -15,7 +15,8 @@ try:
         _9_refer_audio,
         _10_gen_audio,
         _11_merge_audio,
-        _12_dub_to_vid
+        _12_dub_to_vid,
+        _gen_source_srt
     )
     from .utils import *
     from .utils.onekeycleanup import cleanup
@@ -43,5 +44,6 @@ __all__ = [
     '_9_refer_audio',
     '_10_gen_audio',
     '_11_merge_audio',
-    '_12_dub_to_vid'
+    '_12_dub_to_vid',
+    '_gen_source_srt'
 ]

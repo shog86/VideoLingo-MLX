@@ -189,6 +189,7 @@
     "mlx_diarize": "正在做說話人分離…",
     "ph_nlp": "--- NLP 斷句 ---",
     "ph_meaning": "--- 按語意斷句（LLM）---",
+    "ph_src_srt": "--- 生成源語言字幕 src.srt ---",
     "ph_sum": "--- 總結並提取術語 ---",
     "ph_trans": "--- 翻譯（LLM 並行）---",
     "ph_split": "--- 切分並對齊字幕 ---",

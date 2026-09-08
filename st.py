@@ -140,6 +140,9 @@ def phase1_transcribe(log, progress_callback=None):
         log.log(t("ph_meaning"))
         _3_2_split_meaning.split_sentences_by_meaning()
 
+        log.log(t("ph_src_srt"))
+        _gen_source_srt.gen_source_srt()
+
         log.log(t("ph_sum"))
         _4_1_summarize.get_summary()
 
