@@ -22,6 +22,18 @@ def split_by_mark(nlp):
     # would otherwise create double/quadruple spaces downstream.
     if joiner == " ":
         input_text = re.sub(r'\s+', ' ', input_text).strip()
+    # Safety net for old cleaned_chunks.xlsx generated before ASR cleanup:
+    # repair hyphen artefacts ("e -commerce") and filler leftovers at
+    # sentence level (English only).
+    if joiner == " " and language.lower().startswith('en'):
+        try:
+            from core.asr_backend.audio_preprocess import (
+                fix_hyphen_spacing, clean_text_fillers, normalize_spacing,
+            )
+            input_text = normalize_spacing(
+                clean_text_fillers(fix_hyphen_spacing(input_text)))
+        except Exception:
+            pass
 
     doc = nlp(input_text)
     assert doc.has_annotation("SENT_START")

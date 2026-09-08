@@ -156,6 +156,7 @@ def align_timestamp_main():
 
     # Normalize spacing on both columns so already-generated intermediate
     # files (with double spaces) are fixed without re-running transcription.
+    # Also repair hyphen artefacts ("e -commerce") on the English Source side.
     for col in ('Source', 'Translation'):
         if col in df_translate.columns:
             before = df_translate[col].astype(str).tolist()
@@ -164,6 +165,17 @@ def align_timestamp_main():
             n_fixed = sum(1 for a, b in zip(before, df_translate[col].astype(str)) if a != b)
             if n_fixed:
                 console.print(f"[blue]ℹ️ Normalized spacing in {n_fixed} '{col}' cell(s).[/blue]")
+    if 'Source' in df_translate.columns:
+        try:
+            from core.asr_backend.audio_preprocess import fix_hyphen_spacing
+            before = df_translate['Source'].astype(str).tolist()
+            df_translate['Source'] = df_translate['Source'].apply(
+                lambda x: normalize_spacing(fix_hyphen_spacing(x)) if pd.notna(x) else x)
+            n_fixed = sum(1 for a, b in zip(before, df_translate['Source'].astype(str)) if a != b)
+            if n_fixed:
+                console.print(f"[blue]🔗 Fixed hyphen spacing in {n_fixed} Source cell(s).[/blue]")
+        except Exception:
+            pass
 
     align_timestamp(df_text, df_translate, SUBTITLE_OUTPUT_CONFIGS, _OUTPUT_DIR)
     console.print(Panel("[bold green]🎉📝 Subtitles generation completed! Please check in the `output` folder 👀[/bold green]"))

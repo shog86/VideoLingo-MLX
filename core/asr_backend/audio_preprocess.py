@@ -139,6 +139,197 @@ def normalize_spacing(text: str) -> str:
     return re.sub(r'\s+', ' ', text).strip()
 
 
+# ---------------------------------------------------------------------------
+# English transcription cleanup: filler words + broken hyphenated words
+# e.g. "you know", "um", "uh" and "e -commerce" -> "e-commerce"
+# ---------------------------------------------------------------------------
+
+# Single-token fillers (interjections). Matched case-insensitively after
+# stripping surrounding punctuation, e.g. "Um," -> "um" -> dropped.
+FILLER_SINGLE = frozenset({
+    'um', 'umm', 'ummm', 'uhm', 'uh', 'uhh', 'uhhh',
+    'ah', 'er', 'erm', 'err', 'hmm', 'hm', 'mm', 'mhm',
+})
+
+# Multi-word discourse fillers handled as token sequences.
+# "you know" / "i mean" are only dropped in filler position (comma-adjacent
+# or clause boundary) so meaningful uses like "you know the answer" survive.
+FILLER_PHRASES = (
+    ('you', 'know'),
+    ('i', 'mean'),
+)
+
+_PUNCT_RE = re.compile(r'^[^A-Za-z0-9]+|[^A-Za-z0-9]+$')
+
+
+def _stripped_lower(token: str) -> str:
+    return _PUNCT_RE.sub('', token or '').lower()
+
+
+def _has_attached_punct(token: str) -> bool:
+    """True if token carries leading/trailing punctuation (e.g. 'know,')."""
+    t = token or ''
+    return bool(re.search(r'^[^A-Za-z0-9]|[^A-Za-z0-9]$', t.strip()))
+
+
+def _is_english_transcription() -> bool:
+    try:
+        lang = load_key("whisper.language")
+        if lang == 'auto':
+            lang = load_key("whisper.detected_language")
+        return (lang or '').lower().startswith('en')
+    except Exception:
+        return True  # fail-open: cleanup regexes are en-specific anyway
+
+
+def fix_hyphen_spacing(text: str) -> str:
+    """Repair Whisper word-join artefacts like 'e -commerce' -> 'e-commerce'.
+
+    Only fixes unambiguous cases (space on ONE side of the hyphen, or a
+    single-letter prefix like 'e - commerce'), leaving spaced dashes
+    ('hello - world') untouched.
+    """
+    if not isinstance(text, str) or '-' not in text:
+        return text
+    # "e -commerce" / "well -known" (space before only)
+    text = re.sub(r'(\w)\s+-(?=\w)', r'\1-', text)
+    # "e- commerce" / "well- known" (space after only)
+    text = re.sub(r'(?<=\w)-\s+(\w)', r'-\1', text)
+    # single-letter prefix with spaces both sides: "e - commerce"
+    text = re.sub(r'\b([A-Za-z])\s+-\s+([A-Za-z])', r'\1-\2', text)
+    return text
+
+
+def clean_text_fillers(text: str) -> str:
+    """Text-level filler cleanup (safety net for segment-level ASR output).
+
+    Removes comma-parenthesised fillers: ', um,', ', you know,', leading
+    'You know, ' / 'Um, ' and trailing ', um'. Conservative by design.
+    """
+    if not isinstance(text, str) or not text.strip():
+        return text
+    single = '|'.join(sorted(FILLER_SINGLE, key=len, reverse=True))
+    # ", um," / ", uh," -> ","  (also with periods)
+    text = re.sub(r',\s*(?:' + single + r')\s*,', ',', text, flags=re.IGNORECASE)
+    # ", you know," / ", i mean," -> ","
+    text = re.sub(r',\s*you\s+know\s*,', ',', text, flags=re.IGNORECASE)
+    text = re.sub(r',\s*i\s+mean\s*,', ',', text, flags=re.IGNORECASE)
+    # leading "You know, " / "Um, " / "Uh, "
+    text = re.sub(r'^(?:you\s+know|i\s+mean|' + single + r')\s*,\s*', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'^(?:you\s+know|i\s+mean|' + single + r')\s+', '', text, flags=re.IGNORECASE)
+    # trailing ", you know" / ", um" (+ optional period)
+    text = re.sub(r',\s*(?:you\s+know|i\s+mean|' + single + r')\s*([.?!]?)$', r'\1', text, flags=re.IGNORECASE)
+    # leftover double commas / stray spaces
+    text = re.sub(r',\s*,', ',', text)
+    text = re.sub(r'\s{2,}', ' ', text).strip()
+    text = re.sub(r'\s+([,.?!])', r'\1', text)
+    return text
+
+
+def merge_hyphenated_words(df: pd.DataFrame) -> pd.DataFrame:
+    """Merge word-rows split at hyphens: ['e','-','commerce'] -> ['e-commerce'].
+
+    Timestamps span the merged tokens (start of first, end of last).
+    Em/en dashes (—, –, spaced ' - ') are left alone.
+    """
+    if df is None or df.empty:
+        return df
+    rows = df.to_dict('records')
+    merged = []
+    i = 0
+    n_merged = 0
+    while i < len(rows):
+        cur_raw = str(rows[i].get('text', '')).strip()
+        cur_stripped = cur_raw.strip('"\'')
+
+        # Case A: standalone "-" row between two word rows -> join all three
+        if cur_stripped == '-' and merged and i + 1 < len(rows):
+            nxt_raw = str(rows[i + 1].get('text', '')).strip().strip('"\'')
+            prev = merged[-1]
+            prev_raw = str(prev.get('text', '')).strip().strip('"\'')
+            if prev_raw and nxt_raw and re.search(r'\w$', prev_raw) and re.search(r'^\w', nxt_raw):
+                prev['text'] = f"{prev_raw}-{nxt_raw}"
+                prev['end'] = rows[i + 1].get('end', prev.get('end'))
+                n_merged += 1
+                i += 2
+                continue
+
+        # Case B: hyphen attached on one side, e.g. "-commerce" or "well-"
+        if cur_stripped.startswith('-') and len(cur_stripped) > 1 and merged:
+            prev = merged[-1]
+            prev_raw = str(prev.get('text', '')).strip().strip('"\'')
+            tail = cur_stripped[1:]
+            if prev_raw and re.search(r'\w$', prev_raw) and re.match(r'^\w', tail):
+                prev['text'] = f"{prev_raw}-{tail}"
+                prev['end'] = rows[i].get('end', prev.get('end'))
+                n_merged += 1
+                i += 1
+                continue
+        if cur_stripped.endswith('-') and len(cur_stripped) > 1 and i + 1 < len(rows):
+            nxt_raw = str(rows[i + 1].get('text', '')).strip().strip('"\'')
+            head = cur_stripped[:-1]
+            if head and re.search(r'\w$', head) and nxt_raw and re.match(r'^\w', nxt_raw):
+                rows[i] = {**rows[i], 'text': f"{head}-{nxt_raw}",
+                           'end': rows[i + 1].get('end', rows[i].get('end'))}
+                merged.append(rows[i])
+                n_merged += 1
+                i += 2
+                continue
+
+        merged.append(rows[i])
+        i += 1
+
+    if n_merged:
+        rprint(f"[blue]🔗 Merged {n_merged} hyphen-split word(s) (e.g. 'e -commerce' → 'e-commerce').[/blue]")
+    return pd.DataFrame(merged) if merged else df.iloc[0:0].copy()
+
+
+def remove_filler_words_df(df: pd.DataFrame) -> pd.DataFrame:
+    """Drop English filler word-rows (um/uh/you-know/…) while keeping timestamps.
+
+    - Single fillers (um, uh, …) are dropped wherever they appear standalone.
+    - 'you know' / 'i mean' are dropped only in filler position, i.e. when
+      adjacent to punctuation or at a clause boundary, so that meaningful
+      uses ('you know the answer') survive.
+    Returns a new DataFrame (order preserved).
+    """
+    if df is None or df.empty:
+        return df
+    texts = df['text'].astype(str).tolist()
+    stripped = [_stripped_lower(t.strip().strip('"')) for t in texts]
+    drop = [False] * len(texts)
+
+    for idx, s in enumerate(stripped):
+        if s in FILLER_SINGLE:
+            drop[idx] = True
+
+    for idx in range(len(texts) - 1):
+        if drop[idx] or drop[idx + 1]:
+            continue
+        if (stripped[idx], stripped[idx + 1]) not in FILLER_PHRASES:
+            continue
+        left_tok = texts[idx].strip().strip('"')
+        right_tok = texts[idx + 1].strip().strip('"')
+        # Only drop in filler position: adjacent to punctuation (", you know,",
+        # "You know, ...", "..., you know.", "I mean, ..."). A bare
+        # "you know the answer" (no commas) is meaningful and must survive.
+        comma_context = (
+            _has_attached_punct(left_tok) or _has_attached_punct(right_tok)
+            or (idx > 0 and _has_attached_punct(texts[idx - 1].strip().strip('"')))
+            or (idx + 2 < len(texts) and _has_attached_punct(texts[idx + 2].strip().strip('"')))
+        )
+        if comma_context:
+            drop[idx] = True
+            drop[idx + 1] = True
+
+    n_dropped = sum(drop)
+    if n_dropped:
+        dropped_preview = [texts[k].strip().strip('"') for k, d in enumerate(drop) if d][:8]
+        rprint(f"[blue]🧹 Removed {n_dropped} filler word(s): {dropped_preview}…[/blue]")
+        df = df.loc[[not d for d in drop]].reset_index(drop=True)
+    return df
+
+
 def process_transcription(result: Dict) -> pd.DataFrame:
     all_words = []
     expect_capital = True
@@ -235,6 +426,23 @@ def save_results(df: pd.DataFrame):
     n_fixed = sum(1 for a, b in zip(before_spacing, df['text']) if a != b)
     if n_fixed:
         rprint(f"[blue]ℹ️ Normalized spacing in {n_fixed} word(s) (collapsed multi-space runs).[/blue]")
+
+    # 1c. English-only cleanup: merge hyphen-split words + drop filler words.
+    #     Must run BEFORE junk filters so "e -commerce" isn't misjudged and
+    #     filler tokens don't shift downstream alignment.
+    if _is_english_transcription():
+        before_rows = len(df)
+        df = merge_hyphenated_words(df)
+        # Text-level safety net per row (fixes "-commerce", "e -" leftovers)
+        df['text'] = df['text'].apply(lambda x: normalize_spacing(fix_hyphen_spacing(x)) if isinstance(x, str) else x)
+        df = remove_filler_words_df(df)
+        # Segment-level ASR (no word timestamps) packs a whole sentence into
+        # one row — run the text-level filler regex as well.
+        df['text'] = df['text'].apply(lambda x: normalize_spacing(clean_text_fillers(x)) if isinstance(x, str) else x)
+        # Rows emptied by filler cleanup (e.g. a lone "Um,") are junk.
+        df = df[df['text'].str.strip().str.len() > 0]
+        if len(df) != before_rows:
+            rprint(f"[blue]ℹ️ Transcription cleanup: {before_rows} → {len(df)} word row(s).[/blue]")
     
     # 2. Filter out common ASR hallucinations (e.g., repetitive characters)
     # Repetitive characters filter: if a single character is repeated more than 3 times
