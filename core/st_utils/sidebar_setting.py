@@ -11,7 +11,9 @@ def config_input(label, key, help=None):
         update_key(key, val)
     return val
 
-@st.fragment
+# NOTE: intentionally NOT @st.fragment — fragment-scoped reruns here raced
+# with full-app state changes (Stop/Delete/upload) and could surface
+# "RuntimeError: Could not find fragment with id ...".
 def page_setting():
 
     display_language = st.selectbox("Display Language 🌐", 

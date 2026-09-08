@@ -7,6 +7,7 @@ from core.utils import *
 from rich.console import Console
 from rich.table import Table
 from core.utils.models import _3_1_SPLIT_BY_NLP, _3_2_SPLIT_BY_MEANING
+from translations.translations import translate as t
 console = Console()
 
 def tokenize_sentence(sentence, nlp):
@@ -80,7 +81,7 @@ def split_sentence(sentence, num_parts, word_limit=20, index=-1, retry_attempt=0
     
     return best_split
 
-def parallel_split_sentences(sentences, max_length, max_workers, nlp, retry_attempt=0):
+def parallel_split_sentences(sentences, max_length, max_workers, nlp, retry_attempt=0, progress_callback=None, progress_lo=0.0, progress_hi=100.0):
     """Split sentences in parallel using a thread pool."""
     new_sentences = [None] * len(sentences)
     futures = []
@@ -104,12 +105,30 @@ def parallel_split_sentences(sentences, max_length, max_workers, nlp, retry_atte
                 new_sentences[index] = [line.strip() for line in split_lines]
             else:
                 new_sentences[index] = [sentence]
+            if progress_callback and futures:
+                try:
+                    done = sum(1 for s in new_sentences if s is not None)
+                    frac = done / max(1, len(sentences))
+                    progress_callback(
+                        step="meaning",
+                        detail=t("meaning_split_fmt").format(done=done, n=len(sentences)),
+                        percent=progress_lo + (progress_hi - progress_lo) * frac)
+                except Exception:
+                    pass
 
     return [sentence for sublist in new_sentences for sentence in sublist]
 
 @check_file_exists(_3_2_SPLIT_BY_MEANING)
-def split_sentences_by_meaning():
+def split_sentences_by_meaning(progress_callback=None):
     """The main function to split sentences by meaning."""
+    from translations.translations import translate as t
+    def _report(pct, key, **fmt):
+        if progress_callback:
+            try:
+                detail = t(key).format(**fmt) if fmt else t(key)
+                progress_callback(step="meaning", detail=detail, percent=pct)
+            except Exception:
+                pass
     # read input sentences
     with open(_3_1_SPLIT_BY_NLP, 'r', encoding='utf-8') as f:
         sentences = [line.strip() for line in f.readlines()]
@@ -117,11 +136,16 @@ def split_sentences_by_meaning():
     nlp = init_nlp()
     # 🔄 process sentences multiple times to ensure all are split
     for retry_attempt in range(3):
-        sentences = parallel_split_sentences(sentences, max_length=load_key("max_split_length"), max_workers=load_key("max_workers"), nlp=nlp, retry_attempt=retry_attempt)
+        _report(retry_attempt / 3 * 100, "meaning_round_fmt",
+                i=retry_attempt + 1, n=3)
+        lo, hi = retry_attempt / 3 * 100, (retry_attempt + 1) / 3 * 100
+        sentences = parallel_split_sentences(sentences, max_length=load_key("max_split_length"), max_workers=load_key("max_workers"), nlp=nlp, retry_attempt=retry_attempt,
+                                             progress_callback=progress_callback, progress_lo=lo, progress_hi=hi)
 
     # 💾 save results
     with open(_3_2_SPLIT_BY_MEANING, 'w', encoding='utf-8') as f:
         f.write('\n'.join(sentences))
+    _report(100, "meaning_done")
     console.print('[green]✅ All sentences have been successfully split![/green]')
 
 if __name__ == '__main__':

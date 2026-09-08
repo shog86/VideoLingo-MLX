@@ -127,37 +127,65 @@ def _stored_log_box(session_key):
         with st.expander(t("run_log"), expanded=False):
             st.code("\n".join(lines[-300:]), language="text")
 
+def _scaled_cb(progress_callback, lo, hi):
+    """Map a sub-step's 0-100 percent into the overall [lo, hi] window."""
+    def _cb(step=None, detail=None, percent=None):
+        if percent is None:
+            progress_callback(step=step, detail=detail, percent=None)
+        else:
+            try:
+                p = max(0.0, min(100.0, float(percent)))
+            except (TypeError, ValueError):
+                progress_callback(step=step, detail=detail, percent=None)
+                return
+            progress_callback(step=step, detail=detail,
+                              percent=lo + (hi - lo) * p / 100.0)
+    return _cb
+
+
 def phase1_transcribe(log, progress_callback=None):
-    """Step 2 (Transcribe): Transcription + NLP split + meaning split + summarize + translate + generate SRTs."""
+    """Step 2 (Transcribe): Transcription + NLP split + meaning split + summarize + translate + generate SRTs.
+
+    Overall progress is weighted across sub-steps so the CTA pill shows
+    fine-grained percent instead of jumping coarsely:
+      ASR 0-55 → NLP 55-60 → meaning 60-70 → src.srt 70-73 →
+      summarize 73-78 → translate 78-90 → split 90-96 → gen 96-100.
+    """
     cb = progress_callback or log.progress_callback
     with redirect_stdout(log), redirect_stderr(log):
         log.log(f"=== {t('section_transcribe')} ===")
-        _2_asr.transcribe(progress_callback=cb)
+        _2_asr.transcribe(progress_callback=_scaled_cb(cb, 0, 55))
 
         log.log(t("ph_nlp"))
-        _3_1_split_nlp.split_by_spacy()
+        _3_1_split_nlp.split_by_spacy(
+            progress_callback=_scaled_cb(cb, 55, 60))
 
         log.log(t("ph_meaning"))
-        _3_2_split_meaning.split_sentences_by_meaning()
+        _3_2_split_meaning.split_sentences_by_meaning(
+            progress_callback=_scaled_cb(cb, 60, 70))
 
         log.log(t("ph_src_srt"))
-        _gen_source_srt.gen_source_srt()
+        _gen_source_srt.gen_source_srt(
+            progress_callback=_scaled_cb(cb, 70, 73))
 
         log.log(t("ph_sum"))
-        _4_1_summarize.get_summary()
+        _4_1_summarize.get_summary(
+            progress_callback=_scaled_cb(cb, 73, 78))
 
         if load_key("pause_before_translate"):
-            log.log("⚠️ pause_before_translate is ON: edit output/log/terminology.json in the next run "
-                    "before translating. Continuing with current terminology this time.")
+            log.log(t("pause_before_translate_note"))
 
         log.log(t("ph_trans"))
-        _4_2_translate.translate_all(progress_callback=cb)
+        _4_2_translate.translate_all(
+            progress_callback=_scaled_cb(cb, 78, 90))
 
         log.log(t("ph_split"))
-        _5_split_sub.split_for_sub_main()
+        _5_split_sub.split_for_sub_main(
+            progress_callback=_scaled_cb(cb, 90, 96))
 
         log.log(t("ph_gen"))
-        _6_gen_sub.align_timestamp_main()
+        _6_gen_sub.align_timestamp_main(
+            progress_callback=_scaled_cb(cb, 96, 100))
 
         log.log(f"=== {t('phase1_done_summary')} ===")
     log.flush()
@@ -173,7 +201,9 @@ def phase3_burn(slot, tracks):
     cta_progress(slot, t("phase3_starting"))
     _7_sub_into_vid.merge_subtitles_to_video(tracks=tracks, log_callback=_cb)
 
-@st.fragment
+# NOTE: intentionally NOT @st.fragment (see download_video_section.py):
+# long transcribe runs + Stop/Delete with fragments raised
+# "RuntimeError: Could not find fragment with id ...".
 def text_processing_section():
     with st.container():
         # ── Step 2: Transcribe ──
@@ -204,16 +234,23 @@ def text_processing_section():
 
                 try:
                     phase1_transcribe(log, progress_callback=_cb1)
-                except Exception as e:
+                except BaseException as e:
+                    # Streamlit's Stop button interrupts the run from outside
+                    # (not a normal Exception), so reset the flag and keep the
+                    # partial log instead of leaving the page stuck/broken.
+                    from streamlit.runtime.scriptrunner.script_runner import StopException, RerunException
+                    st.session_state["phase1_log"] = list(log.lines)
+                    st.session_state["running_phase1"] = False
+                    if isinstance(e, (StopException, RerunException)):
+                        raise
                     log.log(f"❌ {t('section_transcribe')} failed: {e}")
                     log.flush()
                     st.session_state["phase1_log"] = list(log.lines)
-                    st.session_state["running_phase1"] = False
                     st.error(f"{t('section_transcribe')} failed: {e}")
                 else:
                     st.session_state["phase1_log"] = list(log.lines)
                     st.session_state["running_phase1"] = False
-                    st.rerun()
+                    st.rerun(scope="app")
         else:
             st.success(f"{t('phase1_done_summary')} · {len([p for p in ALL_SRTS if os.path.exists(p)])} SRT")
             with section_expander(t("subtitle_files"), "phase1_files", default=False):

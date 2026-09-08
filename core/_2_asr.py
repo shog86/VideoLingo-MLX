@@ -20,7 +20,15 @@ def transcribe(progress_callback=None):
     if load_key("demucs"):
         if progress_callback:
             progress_callback(step="demucs", detail=t("asr_demucs"), percent=10)
-        demucs_audio()
+        def _demucs_sub(step=None, detail=None, percent=None):
+            if progress_callback:
+                if percent is None:
+                    progress_callback(step=step or "demucs", detail=detail or t("asr_demucs"), percent=None)
+                else:
+                    # Demucs occupies the 10-20 slice of the ASR 0-100 range.
+                    progress_callback(step=step or "demucs", detail=detail or t("asr_demucs"),
+                                      percent=10 + float(percent) * 10 / 100.0)
+        demucs_audio(progress_callback=_demucs_sub)
         vocal_audio = normalize_audio_volume(_VOCAL_AUDIO_FILE, _VOCAL_AUDIO_FILE, format="mp3")
     else:
         vocal_audio = _RAW_AUDIO_FILE

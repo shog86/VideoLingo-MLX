@@ -30,7 +30,15 @@ def search_things_to_note_in_prompt(sentence):
     else:
         return None
 
-def get_summary():
+def get_summary(progress_callback=None):
+    from translations.translations import translate as t
+    def _report(pct, key):
+        if progress_callback:
+            try:
+                progress_callback(step="summarize", detail=t(key), percent=pct)
+            except Exception:
+                pass
+    _report(5, "sum_collect")
     src_content = combine_chunks()
     custom_terms = pd.read_excel(CUSTOM_TERMS_PATH)
     custom_terms_json = {
@@ -49,6 +57,7 @@ def get_summary():
         rprint("📝 Terms Content:", json.dumps(custom_terms_json, indent=2, ensure_ascii=False))
     summary_prompt = get_summary_prompt(src_content, custom_terms_json)
     rprint("📝 Summarizing and extracting terminology ...")
+    _report(30, "sum_llm")
     
     def valid_summary(response_data):
         required_keys = {'src', 'tgt', 'note'}
@@ -65,6 +74,7 @@ def get_summary():
     with open(_4_1_TERMINOLOGY, 'w', encoding='utf-8') as f:
         json.dump(summary, f, ensure_ascii=False, indent=4)
 
+    _report(100, "sum_done")
     rprint(f'💾 Summary log saved to → `{_4_1_TERMINOLOGY}`')
 
 if __name__ == '__main__':

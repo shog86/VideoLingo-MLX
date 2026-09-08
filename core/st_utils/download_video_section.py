@@ -1,7 +1,6 @@
 import os
 import re
 import shutil
-from time import sleep
 
 import streamlit as st
 from core._1_ytdlp import download_video_ytdlp, find_media_file, write_input_manifest
@@ -11,7 +10,20 @@ from translations.translations import translate as t
 
 OUTPUT_DIR = "output"
 
-@st.fragment
+# NOTE: intentionally NOT @st.fragment. This section was a fragment before,
+# but fragments + long transcribe runs + Stop/Delete caused
+# "RuntimeError: Could not find fragment with id ..." and stale video
+# previews (old preview surviving delete/re-upload). Full-app reruns are
+# cheap here and always reconcile the whole widget tree.
+def _clear_media_session_state():
+    for k in list(st.session_state.keys()):
+        if k.startswith(("video_upload", "uploaded_ok_", "uploader_nonce_",
+                          "phase1_log", "phase2_pick", "burn_choice")):
+            del st.session_state[k]
+    st.session_state.pop("running_phase1", None)
+    st.session_state.pop("_last_active_step", None)
+
+
 def download_video_section():
     st.header(t("section_download"))
     with st.container():
@@ -22,11 +34,26 @@ def download_video_section():
             else:
                 st.audio(media_file)
             if st.button(t("Delete and Reselect"), key="delete_video_button"):
-                os.remove(media_file)
-                if os.path.exists(OUTPUT_DIR):
-                    shutil.rmtree(OUTPUT_DIR)
-                sleep(1)
-                st.rerun()
+                try:
+                    if os.path.exists(media_file):
+                        os.remove(media_file)
+                except Exception:
+                    pass
+                try:
+                    if os.path.exists(OUTPUT_DIR):
+                        shutil.rmtree(OUTPUT_DIR)
+                except Exception:
+                    pass
+                _clear_media_session_state()
+                # Bump the uploader nonce so the file_uploader widget is
+                # recreated fresh — otherwise Streamlit may keep showing the
+                # previous selection / preview during the next upload.
+                try:
+                    st.session_state["video_upload_nonce"] = \
+                        st.session_state.get("video_upload_nonce", 0) + 1
+                except Exception:
+                    pass
+                st.rerun(scope="app")
             return True
         except:
             col1, col2 = st.columns([3, 1])
@@ -72,7 +99,7 @@ def download_video_section():
                         cta_progress(dl_slot, f"{t('Download Video')} {' | '.join(parts)}")
 
                     download_video_ytdlp(url, resolution=res, progress_callback=_dl_progress)
-                    st.rerun()
+                    st.rerun(scope="app")
 
             # Either-or: a pasted YouTube link and the file uploader are
             # mutually exclusive — once a link is entered the upload entry
@@ -80,8 +107,10 @@ def download_video_section():
             if has_url:
                 st.caption(t("dl_link_entered_hint"))
             else:
+                if "video_upload_nonce" not in st.session_state:
+                    st.session_state["video_upload_nonce"] = 0
                 uploaded_file = localized_uploader(
-                    key="video_upload",
+                    key=f"video_upload_{st.session_state['video_upload_nonce']}",
                     file_types=load_key("allowed_video_formats") + load_key("allowed_audio_formats"))
                 st.caption(f"{t('Or upload video')} · {t('uploader_limit_video')}")
                 if uploaded_file:
@@ -100,6 +129,7 @@ def download_video_section():
                     media_ext = ext.lower().lstrip(".")
                     media_type = "video" if media_ext in load_key("allowed_video_formats") else "audio"
                     write_input_manifest(media_path, media_type)
-                    st.rerun()
+                    st.session_state["video_upload_nonce"] += 1
+                    st.rerun(scope="app")
                 else:
                     return False

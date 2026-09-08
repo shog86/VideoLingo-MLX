@@ -117,7 +117,16 @@ def split_align_subs(src_lines: List[str], tr_lines: List[str], max_sub_length: 
     
     return src_lines, tr_lines, remerged_tr_lines
 
-def split_for_sub_main():
+def split_for_sub_main(progress_callback=None):
+    from translations.translations import translate as t
+    def _report(pct, key, **fmt):
+        if progress_callback:
+            try:
+                detail = t(key).format(**fmt) if fmt else t(key)
+                progress_callback(step="split", detail=detail, percent=pct)
+            except Exception:
+                pass
+    _report(0, "split_start")
     console.print("[bold green]🚀 Start splitting subtitles...[/bold green]")
     
     df = pd.read_excel(_4_2_TRANSLATION)
@@ -129,6 +138,7 @@ def split_for_sub_main():
     TARGET_SUB_MULTIPLIER = subtitle_set["target_multiplier"]
     
     for attempt in range(3):  # 多次切割
+        _report(attempt / 3 * 100, "split_attempt_fmt", i=attempt + 1, n=3)
         console.print(Panel(f"🔄 Split attempt {attempt + 1}", expand=False))
         split_src, split_trans, remerged = split_align_subs(src.copy(), trans, MAX_SUB_LENGTH)
         
@@ -148,6 +158,7 @@ def split_for_sub_main():
     
     pd.DataFrame({'Source': split_src, 'Translation': split_trans}).to_excel(_5_SPLIT_SUB, index=False)
     pd.DataFrame({'Source': src, 'Translation': remerged}).to_excel(_5_REMERGED, index=False)
+    _report(100, "split_done")
 
 if __name__ == '__main__':
     split_for_sub_main()

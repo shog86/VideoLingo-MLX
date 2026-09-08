@@ -148,7 +148,15 @@ def clean_translation(x):
     cleaned = str(x).strip('。').strip('，')
     return autocorrect.format(cleaned)
 
-def align_timestamp_main():
+def align_timestamp_main(progress_callback=None):
+    from translations.translations import translate as t
+    def _report(pct, key):
+        if progress_callback:
+            try:
+                progress_callback(step="gen", detail=t(key), percent=pct)
+            except Exception:
+                pass
+    _report(5, "gen_align")
     from core.asr_backend.audio_preprocess import normalize_spacing
     df_text = pd.read_excel(_2_CLEANED_CHUNKS)
     df_text['text'] = df_text['text'].str.strip('"').str.strip()
@@ -179,6 +187,7 @@ def align_timestamp_main():
             pass
 
     align_timestamp(df_text, df_translate, SUBTITLE_OUTPUT_CONFIGS, _OUTPUT_DIR)
+    _report(60, "gen_srt_written")
     console.print(Panel("[bold green]🎉📝 Subtitles generation completed! Please check in the `output` folder 👀[/bold green]"))
 
     # Validate written SRTs: fail loudly if any multi-space run survived.
@@ -203,6 +212,7 @@ def align_timestamp_main():
     df_translate_for_audio['Translation'] = df_translate_for_audio['Translation'].apply(clean_translation)
     
     align_timestamp(df_text, df_translate_for_audio, AUDIO_SUBTITLE_OUTPUT_CONFIGS, _AUDIO_DIR)
+    _report(100, "gen_done")
     console.print(Panel(f"[bold green]🎉📝 Audio subtitles generation completed! Please check in the `{_AUDIO_DIR}` folder 👀[/bold green]"))
     
 

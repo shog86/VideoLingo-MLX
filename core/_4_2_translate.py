@@ -10,6 +10,7 @@ from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from difflib import SequenceMatcher
 from core.utils.models import *
+from translations.translations import translate as t
 console = Console()
 
 # Function to split text into chunks
@@ -60,7 +61,7 @@ def translate_all(progress_callback=None):
     total = len(chunks)
     if progress_callback:
         try:
-            progress_callback(step="translate", detail=f"Translating chunks 0/{total}", percent=0)
+            progress_callback(step="translate", detail=t("tr_chunks_fmt").format(done=0, total=total), percent=0)
         except Exception:
             pass
     with open(_4_1_TERMINOLOGY, 'r', encoding='utf-8') as file:
@@ -86,7 +87,7 @@ def translate_all(progress_callback=None):
                 if progress_callback:
                     try:
                         progress_callback(step="translate",
-                                          detail=f"Translating chunks {done}/{total}",
+                                          detail=t("tr_chunks_fmt").format(done=done, total=total),
                                           percent=done / total * 100 if total else 100)
                     except Exception:
                         pass

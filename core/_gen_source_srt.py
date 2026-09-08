@@ -70,6 +70,14 @@ def _split_source_lines_to_subtitle(lines, max_sub_length):
 
 def gen_source_srt(progress_callback=None):
     """前置生成源语言字幕 src.srt（在翻译前调用，依赖在线 LLM 做源句语义切分）。"""
+    from translations.translations import translate as t
+    def _report(pct, key):
+        if progress_callback:
+            try:
+                progress_callback(step="src_srt", detail=t(key), percent=pct)
+            except Exception:
+                pass
+    _report(5, "src_srt_start")
     rprint("[cyan][src_srt] 🎬 开始前置生成源语言字幕 src.srt...[/cyan]")
 
     # 1. 校验前置中间文件必须已存在
@@ -92,14 +100,17 @@ def gen_source_srt(progress_callback=None):
     from core._5_split_sub import get_effective_max_length
     max_sub_length = get_effective_max_length()
     rprint(f"[cyan][src_srt] 源句数={len(lines)}，字幕最大长度={max_sub_length}[/cyan]")
+    _report(40, "src_srt_split")
     src_lines = _split_source_lines_to_subtitle(lines, max_sub_length)
     rprint(f"[cyan][src_srt] 字幕行数={len(src_lines)}（切分后）[/cyan]")
 
     # 5. 时间戳对齐并只输出 src.srt（Translation 留空不影响 Source 对齐）
+    _report(70, "src_srt_align")
     from core._6_gen_sub import align_timestamp
     df_src = pd.DataFrame({'Source': src_lines, 'Translation': [''] * len(src_lines)})
     align_timestamp(df_text, df_src, [('src.srt', ['Source'])], _OUTPUT_DIR, for_display=False)
 
+    _report(100, "src_srt_done")
     rprint(Panel("[bold green][src_srt] 🎉📝 源语言字幕 src.srt 已前置生成，翻译流程不再覆盖它。[/bold green]"))
 
 
