@@ -58,9 +58,33 @@ def align_subs(src_sub: str, tr_sub: str, src_part: str) -> Tuple[List[str], Lis
     
     return src_parts, tr_parts, tr_remerged
 
-def split_align_subs(src_lines: List[str], tr_lines: List[str]):
+def get_effective_max_length() -> int:
+    """Return subtitle max_length scaled by actual video width.
+
+    Base value comes from config `subtitle.max_length` (calibrated for
+    1920px wide video). Portrait / 720p videos get a smaller limit so lines
+    don't overflow or forced-wrap at burn time:
+      1920 -> 75, 1280 -> 50, 1080 -> 42, 720 -> 28.
+    Falls back to the base value for audio-only input or missing video.
+    """
     subtitle_set = load_key("subtitle")
-    MAX_SUB_LENGTH = subtitle_set["max_length"]
+    base = int(subtitle_set["max_length"])
+    try:
+        from core._1_ytdlp import find_video_files
+        from core.utils.video_utils import get_video_resolution, effective_max_sub_length
+        video_file = find_video_files()
+        w, h = get_video_resolution(video_file)
+        eff = effective_max_sub_length(base, w)
+        console.print(f"[cyan]📐 Video width {w}px → effective max subtitle length {eff} (base {base})[/cyan]")
+        return eff
+    except Exception as e:
+        console.print(f"[yellow]⚠️ Could not detect video width ({e}), using base max_length {base}[/yellow]")
+        return base
+
+
+def split_align_subs(src_lines: List[str], tr_lines: List[str], max_sub_length: int = None):
+    subtitle_set = load_key("subtitle")
+    MAX_SUB_LENGTH = max_sub_length if max_sub_length is not None else get_effective_max_length()
     TARGET_SUB_MULTIPLIER = subtitle_set["target_multiplier"]
     remerged_tr_lines = tr_lines.copy()
     
@@ -101,12 +125,12 @@ def split_for_sub_main():
     trans = df['Translation'].tolist()
     
     subtitle_set = load_key("subtitle")
-    MAX_SUB_LENGTH = subtitle_set["max_length"]
+    MAX_SUB_LENGTH = get_effective_max_length()
     TARGET_SUB_MULTIPLIER = subtitle_set["target_multiplier"]
     
     for attempt in range(3):  # 多次切割
         console.print(Panel(f"🔄 Split attempt {attempt + 1}", expand=False))
-        split_src, split_trans, remerged = split_align_subs(src.copy(), trans)
+        split_src, split_trans, remerged = split_align_subs(src.copy(), trans, MAX_SUB_LENGTH)
         
         # 检查是否所有字幕都符合长度要求
         if all(len(src) <= MAX_SUB_LENGTH for src in split_src) and \

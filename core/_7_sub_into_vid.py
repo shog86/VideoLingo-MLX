@@ -6,8 +6,13 @@ from translations.translations import translate as t
 
 # Bilingual look (matches product style): top line = yellow on black box,
 # larger; bottom line = white, smaller.
-TOP_FONT_SIZE = 20
-BOTTOM_FONT_SIZE = 15
+# Base values are calibrated for 1080p (1920x1080); actual burn styles are
+# built per-resolution via build_ass_styles() so portrait/720p videos get
+# smaller fonts, side margins and PlayRes wrapping instead of overflowing.
+TOP_FONT_SIZE_BASE = 20
+BOTTOM_FONT_SIZE_BASE = 15
+TOP_MARGIN_V_BASE = 50
+BOTTOM_MARGIN_V_BASE = 27
 
 def _pick_cjk_font():
     """Pick a Chinese-capable font that ffmpeg/libass can actually open.
@@ -34,22 +39,20 @@ def _pick_cjk_font():
 
 TOP_FONT_NAME = _pick_cjk_font()
 BOTTOM_FONT_NAME = 'Arial Unicode MS'
-# MarginV diff = line gap: TOP sits above BOTTOM by (TOP_MARGIN_V -
-# BOTTOM_MARGIN_V - BOTTOM_FONT_SIZE). Keep a small gap (~8px in style
-# units): 50 - 27 - 15 = 8, so lines are separated but not far apart.
-TOP_MARGIN_V = 50
-BOTTOM_MARGIN_V = 27
 
-TOP_STYLE = (
-    f"FontSize={TOP_FONT_SIZE},FontName={TOP_FONT_NAME},"
-    f"PrimaryColour=&H00FFFF,OutlineColour=&H000000,OutlineWidth=1,"
-    f"BackColour=&H1A000000,Alignment=2,MarginV={TOP_MARGIN_V},BorderStyle=4"
-)
-BOTTOM_STYLE = (
-    f"FontSize={BOTTOM_FONT_SIZE},FontName={BOTTOM_FONT_NAME},"
-    f"PrimaryColour=&HFFFFFF,OutlineColour=&H000000,OutlineWidth=1,"
-    f"ShadowColour=&H80000000,BorderStyle=1,Alignment=2,MarginV={BOTTOM_MARGIN_V}"
-)
+
+def _build_styles(width: int, height: int):
+    """Return (top_style, bottom_style) adaptive to video resolution."""
+    from core.utils.video_utils import build_ass_styles
+    top_style, bottom_style, top_fs, bottom_fs = build_ass_styles(
+        width, height, TOP_FONT_NAME, BOTTOM_FONT_NAME,
+        top_base_fs=TOP_FONT_SIZE_BASE, bottom_base_fs=BOTTOM_FONT_SIZE_BASE,
+        top_base_mv=TOP_MARGIN_V_BASE, bottom_base_mv=BOTTOM_MARGIN_V_BASE,
+    )
+    orientation = "portrait" if height > width else "landscape"
+    rprint(f"[cyan]📐 Burn styles ({orientation} {width}x{height}): "
+           f"top fs={top_fs}, bottom fs={bottom_fs}[/cyan]")
+    return top_style, bottom_style
 
 OUTPUT_DIR = "output"
 OUTPUT_VIDEO = f"{OUTPUT_DIR}/output_sub.mp4"
@@ -228,14 +231,16 @@ def merge_subtitles_to_video(tracks=None, log_callback=None):
     video.release()
     rprint(f"[bold green]Video resolution: {TARGET_WIDTH}x{TARGET_HEIGHT}[/bold green]")
 
+    top_style, bottom_style = _build_styles(TARGET_WIDTH, TARGET_HEIGHT)
+
     vf_parts = [
         f"scale={TARGET_WIDTH}:{TARGET_HEIGHT}:force_original_aspect_ratio=decrease:flags=bicubic",
         f"pad={TARGET_WIDTH}:{TARGET_HEIGHT}:(ow-iw)/2:(oh-ih)/2",
     ]
     if top_srt:
-        vf_parts.append(_sub_filter(top_srt, TOP_STYLE))
+        vf_parts.append(_sub_filter(top_srt, top_style))
     if bottom_srt:
-        vf_parts.append(_sub_filter(bottom_srt, BOTTOM_STYLE))
+        vf_parts.append(_sub_filter(bottom_srt, bottom_style))
     ffmpeg_cmd = ['ffmpeg', '-hide_banner', '-nostats', '-i', video_file, '-vf', ','.join(vf_parts)]
 
     # Build encoder flags (VideoToolbox or software fallback)

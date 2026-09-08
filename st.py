@@ -336,7 +336,10 @@ def _render_subtitle_preview(srt_filename):
     TOP_/BOTTOM_ constants the burner uses, so overlap/gap shows up here.
     """
     from core._7_sub_into_vid import (
-        TOP_FONT_SIZE, BOTTOM_FONT_SIZE, TOP_MARGIN_V, BOTTOM_MARGIN_V,
+        TOP_FONT_SIZE_BASE as TOP_FONT_SIZE,
+        BOTTOM_FONT_SIZE_BASE as BOTTOM_FONT_SIZE,
+        TOP_MARGIN_V_BASE as TOP_MARGIN_V,
+        BOTTOM_MARGIN_V_BASE as BOTTOM_MARGIN_V,
         TOP_FONT_NAME,
     )
     path = os.path.join("output", srt_filename)
