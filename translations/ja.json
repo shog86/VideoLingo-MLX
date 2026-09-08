@@ -193,6 +193,7 @@
     "mlx_diarize": "Running speaker diarization...",
     "ph_nlp": "--- NLP sentence splitting ---",
     "ph_meaning": "--- Meaning-based splitting (LLM) ---",
+    "ph_src_srt": "--- Generating source subtitle (src.srt) ---",
     "ph_sum": "--- Summarizing & extracting terminology ---",
     "ph_trans": "--- Translating (LLM, parallel chunks) ---",
     "ph_split": "--- Splitting & aligning subtitles ---",

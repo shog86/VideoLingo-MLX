@@ -8,8 +8,9 @@ from core.utils import *
 from core.utils.models import *
 console = Console()
 
-SUBTITLE_OUTPUT_CONFIGS = [ 
-    ('src.srt', ['Source']),
+# NOTE: src.srt 不再在此生成，已前移到 _gen_source_srt（翻译前独立产出），
+# 这样翻译流程的改动不会覆盖初始的源语言字幕。此处只产出带 Translation 的三类。
+SUBTITLE_OUTPUT_CONFIGS = [
     ('trans.srt', ['Translation']),
     ('src_trans.srt', ['Source', 'Translation']),
     ('trans_src.srt', ['Translation', 'Source'])
