@@ -39,20 +39,34 @@ def get_video_resolution(video_path):
     return 1920, 1080
 
 
-def effective_max_sub_length(base_length, video_width):
-    """Scale subtitle max_length linearly with video width.
+def effective_max_sub_length(base_length, video_width, video_height=None):
+    """Scale subtitle max_length by video shape, not by raw resolution.
 
-    base_length is calibrated for 1920px wide video (1080p landscape):
-      1920 -> base (75), 1280 -> ~50, 1080 (1080p portrait) -> ~42,
-      720 (720p portrait) -> ~28.
-    Clamped to [28, base] so portrait/low-res videos split more aggressively
-    instead of overflowing or forced multi-line wrapping at burn time.
+    - Landscape (width >= height): return base directly. A compressed /
+      low-res landscape copy (e.g. 640x360 of a 2K source) must not force
+      denser splitting; burn-time wrapping + adaptive fonts already handle it.
+    - Portrait (height > width): scale linearly with width so a single line
+      never gets too long on a narrow screen:
+        1080-wide portrait -> ~42, 720-wide portrait -> ~35 (base 75).
+      Clamped to [35, base] (floor follows base when base < 35).
+    - height unknown (legacy caller): fall back to the old width scaling.
     """
     try:
-        scaled = round(float(base_length) * float(video_width) / 1920.0)
+        base = int(base_length)
     except Exception:
         return int(base_length)
-    return max(28, min(int(base_length), scaled))
+    if video_height is not None:
+        try:
+            if float(video_width) >= float(video_height):
+                return base
+        except Exception:
+            return base
+    try:
+        scaled = round(float(base) * float(video_width) / 1920.0)
+    except Exception:
+        return base
+    floor = min(base, 35)
+    return max(floor, min(base, scaled))
 
 
 def build_ass_styles(width, height, top_font_name, bottom_font_name,

@@ -59,12 +59,12 @@ def align_subs(src_sub: str, tr_sub: str, src_part: str) -> Tuple[List[str], Lis
     return src_parts, tr_parts, tr_remerged
 
 def get_effective_max_length() -> int:
-    """Return subtitle max_length scaled by actual video width.
+    """Return subtitle max_length by video shape.
 
-    Base value comes from config `subtitle.max_length` (calibrated for
-    1920px wide video). Portrait / 720p videos get a smaller limit so lines
-    don't overflow or forced-wrap at burn time:
-      1920 -> 75, 1280 -> 50, 1080 -> 42, 720 -> 28.
+    Landscape (w >= h, any resolution): base value from config
+    `subtitle.max_length` — a low-res landscape copy must not split denser.
+    Portrait (h > w): width-scaled limit so one line never gets too long:
+      1920 -> 75, 1280 -> 50, 1080 -> 42, 720 -> 35 (base 75, floor 35).
     Falls back to the base value for audio-only input or missing video.
     """
     subtitle_set = load_key("subtitle")
@@ -74,8 +74,9 @@ def get_effective_max_length() -> int:
         from core.utils.video_utils import get_video_resolution, effective_max_sub_length
         video_file = find_video_files()
         w, h = get_video_resolution(video_file)
-        eff = effective_max_sub_length(base, w)
-        console.print(f"[cyan]📐 Video width {w}px → effective max subtitle length {eff} (base {base})[/cyan]")
+        eff = effective_max_sub_length(base, w, h)
+        orient = "landscape" if w >= h else "portrait"
+        console.print(f"[cyan]📐 Video {w}x{h} ({orient}) → effective max subtitle length {eff} (base {base})[/cyan]")
         return eff
     except Exception as e:
         console.print(f"[yellow]⚠️ Could not detect video width ({e}), using base max_length {base}[/yellow]")
