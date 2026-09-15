@@ -1,6 +1,6 @@
 from core.utils import *
 from core.asr_backend.demucs_vl import demucs_audio
-from core.asr_backend.audio_preprocess import process_transcription, convert_video_to_audio, prepare_audio_for_asr, split_audio, save_results, normalize_audio_volume
+from core.asr_backend.audio_preprocess import process_transcription, convert_video_to_audio, prepare_audio_for_asr, split_audio, save_results, normalize_audio_volume, raw_audio_settings
 from core._1_ytdlp import find_media_file
 from core.utils.models import *
 from translations.translations import translate as t
@@ -14,7 +14,7 @@ def transcribe(progress_callback=None):
     media_file, media_type = find_media_file()
     whisper = load_key("whisper")
     demucs_enabled = load_key("demucs")
-    key = cache.cache_key(media_file, whisper, demucs_enabled) if whisper.get("cache", True) else None
+    key = cache.cache_key(media_file, whisper, demucs_enabled, raw_audio_settings()) if whisper.get("cache", True) else None
     cached_complete = cache.read_result(key, "complete") if key else None
     if media_type == "video":
         convert_video_to_audio(media_file)

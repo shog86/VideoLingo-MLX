@@ -13,7 +13,7 @@ CACHE_DIR = Path(".cache/asr")
 SCHEMA = 1  # Bump when preprocessing, model options or result interpretation changes.
 
 
-def cache_key(media_file, whisper, demucs):
+def cache_key(media_file, whisper, demucs, raw_audio=None):
     digest = hashlib.md5(usedforsecurity=False)
     with open(media_file, "rb") as source:
         for block in iter(lambda: source.read(1024 * 1024), b""):
@@ -26,10 +26,15 @@ def cache_key(media_file, whisper, demucs):
         except PackageNotFoundError:
             packages[name] = None
     # Deliberately exclude credentials, filenames and translation/TTS settings.
+    # Include raw-audio preprocessing: changing raw_sample_rate/raw_bitrate
+    # changes the input bandwidth that Whisper, Demucs and timing analysis all
+    # consume, so it must invalidate otherwise-identical cache entries.
+    sample_rate, bitrate = raw_audio if raw_audio else (None, None)
     identity = {
         "schema": SCHEMA, "media_md5": digest.hexdigest(), "packages": packages,
         "runtime": whisper["runtime"], "model": whisper["model"],
         "language": whisper["language"], "demucs": bool(demucs),
+        "raw_sample_rate": sample_rate, "raw_bitrate": bitrate,
     }
     return hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()
 
