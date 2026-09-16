@@ -1,6 +1,7 @@
 import pandas as pd
 import os
 import re
+from difflib import SequenceMatcher
 from rich.panel import Panel
 from rich.console import Console
 import autocorrect_py as autocorrect
@@ -57,6 +58,39 @@ def show_difference(str1, str2):
     print("Position markers: " + "".join("^" if i in diff_positions else " " for i in range(max(len(str1), len(str2)))))
     print(f"Difference indices: {diff_positions}")
 
+def _fuzzy_find_sentence(full_words_str, needle, position_to_word_idx, start_pos, min_ratio=0.6, window=600):
+    """Bounded fuzzy search for a sentence (cleaned, no punctuation/space).
+
+    Whisper word-cleanup (filler removal, hyphen merging) can make a Source
+    sentence differ slightly from the joined word string, so an exact match
+    fails.  We slide a window across `full_words_str` and keep the highest
+    SequenceMatcher ratio, returning word indices for the best hit only when
+    it is good enough, and never scanning unboundedly on long transcripts.
+    """
+    if needle is None or needle == '':
+        return False, None, None
+    needle_len = len(needle)
+    end_lim = min(len(full_words_str), start_pos + needle_len + window)
+    if end_lim - needle_len < start_pos:
+        return False, None, None
+
+    best_pos, best_ratio = -1, 0.0
+    # Coarse-to-fine: probe step 1 for accuracy; early-exit on near-perfect hit.
+    for p in range(start_pos, end_lim - needle_len + 1):
+        ratio = SequenceMatcher(None, full_words_str[p:p + needle_len], needle).ratio()
+        if ratio > best_ratio:
+            best_ratio, best_pos = ratio, p
+            if best_ratio >= 0.95:
+                break
+
+    if best_ratio >= min_ratio and 0 <= best_pos < len(full_words_str) \
+            and best_pos + needle_len - 1 < len(full_words_str):
+        if best_pos not in position_to_word_idx or (best_pos + needle_len - 1) not in position_to_word_idx:
+            return False, None, None
+        return True, best_pos, best_pos + needle_len - 1
+    return False, None, None
+
+
 def get_sentence_timestamps(df_words, df_sentences):
     time_stamp_list = []
     
@@ -75,29 +109,41 @@ def get_sentence_timestamps(df_words, df_sentences):
     for idx, sentence in df_sentences['Source'].items():
         clean_sentence = remove_punctuation(sentence.lower()).replace(" ", "")
         sentence_len = len(clean_sentence)
-        
-        match_found = False
-        while current_pos <= len(full_words_str) - sentence_len:
-            if full_words_str[current_pos:current_pos+sentence_len] == clean_sentence:
-                start_word_idx = position_to_word_idx[current_pos]
-                end_word_idx = position_to_word_idx[current_pos + sentence_len - 1]
-                
-                time_stamp_list.append((
-                    float(df_words['start'][start_word_idx]),
-                    float(df_words['end'][end_word_idx])
-                ))
-                
-                current_pos += sentence_len
-                match_found = True
-                break
-            current_pos += 1
-            
-        if not match_found:
-            print(f"\n⚠️ Warning: No exact match found for sentence: {sentence}")
-            show_difference(clean_sentence, 
-                          full_words_str[current_pos:current_pos+len(clean_sentence)])
-            print("\nOriginal sentence:", df_sentences['Source'][idx])
-            raise ValueError("❎ No match found for sentence.")
+        if sentence_len == 0:
+            continue
+
+        # 1) Exact contiguous substring from current_pos (fast forward scan).
+        hit = full_words_str.find(clean_sentence, current_pos)
+        if hit != -1:
+            start_word_idx = position_to_word_idx[hit]
+            end_word_idx = position_to_word_idx[hit + sentence_len - 1]
+            time_stamp_list.append((
+                float(df_words['start'][start_word_idx]),
+                float(df_words['end'][end_word_idx])
+            ))
+            current_pos = hit + sentence_len
+            continue
+
+        # 2) Fuzzy fallback from current_pos: tolerate small diffs caused by
+        #    word-level cleanup (filler removal, hyphen merging).
+        ok, f_start, f_end = _fuzzy_find_sentence(
+            full_words_str, clean_sentence, position_to_word_idx, current_pos)
+        if ok:
+            start_word_idx = position_to_word_idx[f_start]
+            end_word_idx = position_to_word_idx[f_end]
+            time_stamp_list.append((
+                float(df_words['start'][start_word_idx]),
+                float(df_words['end'][end_word_idx])
+            ))
+            current_pos = f_end
+            console.print(f"[yellow]⚠️ Fuzzy-matched sentence at index {idx}: {sentence.strip()[:40]}...[/yellow]")
+            continue
+
+        print(f"\n⚠️ No exact or fuzzy match found for sentence: {sentence}")
+        show_difference(clean_sentence,
+                      full_words_str[current_pos:current_pos + len(clean_sentence)])
+        print("\nOriginal sentence:", df_sentences['Source'][idx])
+        raise ValueError("❎ No match found for sentence.")
     
     return time_stamp_list
 

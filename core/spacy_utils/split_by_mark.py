@@ -35,6 +35,21 @@ def split_by_mark(nlp):
         except Exception:
             pass
 
+    # Punctuation restoration + sentence case (English only, config-gated).
+    # Runs before spaCy so missing Whisper punctuation is repaired and the
+    # sentence boundary detector can split on real periods.
+    if joiner == " ":
+        try:
+            from core.utils.config_utils import load_key_or
+            from core.asr_backend.punctuation import restore_punctuation_and_case
+            if load_key_or("subtitle.restore_punctuation", True):
+                before = input_text
+                input_text = restore_punctuation_and_case(input_text, language)
+                if input_text != before:
+                    rprint("[blue]🔤 Punctuation restored and sentence case applied to source text.[/blue]")
+        except Exception as e:
+            rprint(f"[yellow]⚠️ Punctuation restoration skipped ({e}); continuing with raw text.[/yellow]")
+
     doc = nlp(input_text)
     assert doc.has_annotation("SENT_START")
 
