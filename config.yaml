@@ -58,6 +58,8 @@ subtitle:
   max_length: 75
   # *Translated subtitles are slightly larger than source subtitles, affecting the reference length for subtitle splitting
   target_multiplier: 1.2
+  # *Restore punctuation + sentence case for English transcripts before sentence splitting (production-grade subtitles)
+  restore_punctuation: true
 
 # *Summary length, set low to 2k if using local LLM
 summary_length: 8000

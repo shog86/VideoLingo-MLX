@@ -339,6 +339,36 @@ Note: Start you answer with ```json and end with ```, do not add any other text.
     return trim_prompt
 
 ## ================================================================
+# @ _3_1_split_nlp punctuation restoration
+def get_punctuation_restore_prompt(text, language = "English"):
+    return f'''
+## Role
+You are a professional subtitle transcription proofreader for {language} speech.
+
+## Task
+Restore natural punctuation and capitalization in the transcribed speech paragraph below, WITHOUT changing a single word:
+1. Add sentence-final punctuation (., ?, !) where a sentence or clause clearly ends.
+2. Add commas where they clearly separate clauses, list items, or introductory phrases.
+3. Capitalize the first letter of the first word of each sentence.
+4. Add quotation marks only around clearly quoted speech, if any.
+5. Add apostrophes only where clearly intended for common contractions.
+6. Do NOT change, add, delete, or correct any words, spelling, names, numbers, abbreviations, or word order.
+7. Emit a single continuous paragraph (no line breaks) as the result.
+
+## INPUT
+<text>
+{text}
+</text>
+
+## Output in only JSON format and no other text
+{{
+    "text": "the restored paragraph"
+}}
+
+Note: Start your answer with the JSON and end with it, do not add any other text.
+'''.strip()
+
+## ================================================================
 # @ tts_main
 def get_correct_text_prompt(text):
     return f'''
