@@ -19,9 +19,9 @@ cd "$(dirname "$0")"
 
 # Preferred: uv-managed project venv (created by `uv sync` / run_installer.sh)
 if [ -x ".venv/bin/python" ]; then
-    echo -e "${GREEN}✅ Found .venv (uv). Launching UI...${NC}"
+    echo -e "${GREEN}✅ Found .venv (uv). Launching UI via start.py...${NC}"
     export TORCHAUDIO_USE_BACKEND_DISPATCHER=1
-    exec .venv/bin/python -m streamlit run st.py
+    exec .venv/bin/python start.py
 fi
 
 # Fallback: conda environment

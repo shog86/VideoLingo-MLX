@@ -57,20 +57,23 @@ def transcribe(progress_callback=None):
     all_results = []
     language = None
     runtime = load_key("whisper.runtime")
-    if runtime == "mlx":
-        from core.asr_backend.mlx_whisper_local import transcribe_audio as ts, load_whisper_model
-        rprint("[cyan]🎤 Transcribing audio with MLX-Whisper (Mac Optimized)...[/cyan]")
-        whisper_model_name = load_key("whisper.model")
-        load_whisper_model(whisper_model_name)
+    backend = str(load_key_or("whisper.backend", "qwen")).lower()
+    if runtime == "mlx" or runtime == "local":
+        if backend == "qwen":
+            from core.asr_backend.qwen_asr_local import transcribe_audio as ts
+            rprint("[cyan]🎤 Transcribing audio with local Qwen3-ASR + ForcedAligner (MLX)...[/cyan]")
+        else:
+            from core.asr_backend.mlx_whisper_local import transcribe_audio as ts, load_whisper_model
+            rprint("[cyan]🎤 Transcribing audio with MLX-Whisper (Mac Optimized)...[/cyan]")
+            whisper_model_name = load_key("whisper.model")
+            load_whisper_model(whisper_model_name)
     elif runtime == "elevenlabs":
         from core.asr_backend.elevenlabs_asr import transcribe_audio_elevenlabs as ts
         rprint("[cyan]🎤 Transcribing audio with ElevenLabs API...[/cyan]")
     else:
-        # Fallback to MLX if specified runtime is missing or legacy
-        from core.asr_backend.mlx_whisper_local import transcribe_audio as ts, load_whisper_model
-        rprint(f"[yellow]⚠️ Runtime '{runtime}' is no longer supported on this Mac-optimized version. Falling back to MLX...[/yellow]")
-        whisper_model_name = load_key("whisper.model")
-        load_whisper_model(whisper_model_name)
+        # Fallback to Qwen (upstream default) if specified runtime is missing or legacy
+        from core.asr_backend.qwen_asr_local import transcribe_audio as ts
+        rprint(f"[yellow]⚠️ Runtime '{runtime}' is no longer supported on this Mac-optimized version. Falling back to Qwen3-ASR...[/yellow]")
 
     total_segments = len(segments)
     for i, (start, end) in enumerate(segments):

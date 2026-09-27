@@ -27,6 +27,8 @@ dependencies = [
     "InquirerPy",
     "autocorrect-py",
     "edge-tts",
+    # Setup fetches the platform's FFmpeg + ffprobe automatically; no system install.
+    "static-ffmpeg==3.0",
     "syllables",
     "pypinyin",
     "g2p-en",
@@ -42,6 +44,17 @@ dependencies = [
     "mlx",
     "pyannote.audio>=4.0",
     "python-dotenv",
+
+    # Qwen3-ASR + Qwen3-ForcedAligner via MLX (core/asr_backend/qwen_asr_local.py).
+    # Bundled CPU silero VAD guards Qwen alignment from non-speech intros
+    # (upstream v3.1.0 "first-subtitle-early" fix). mlx-audio's forced aligner
+    # lazily imports nagisa/soynlp for Japanese/Korean; pins mirror upstream.
+    "mlx-audio>=0.5.5,<0.6",
+    "silero-vad>=6.2.3,<6.3",
+    "transformers>=5.14,<6",
+    "huggingface-hub>=1,<2",
+    "nagisa==0.2.11",
+    "soynlp==0.0.493",
 
     # Vocal separation. As a locked git dependency the exact commit is pinned
     # in uv.lock (previously installed manually with pip --no-deps).
