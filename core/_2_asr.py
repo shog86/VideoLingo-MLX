@@ -57,21 +57,15 @@ def transcribe(progress_callback=None):
     all_results = []
     language = None
     runtime = load_key("whisper.runtime")
-    backend = str(load_key_or("whisper.backend", "qwen")).lower()
-    if runtime == "mlx" or runtime == "local":
-        if backend == "qwen":
-            from core.asr_backend.qwen_asr_local import transcribe_audio as ts
-            rprint("[cyan]🎤 Transcribing audio with local Qwen3-ASR + ForcedAligner (MLX)...[/cyan]")
-        else:
-            from core.asr_backend.mlx_whisper_local import transcribe_audio as ts, load_whisper_model
-            rprint("[cyan]🎤 Transcribing audio with MLX-Whisper (Mac Optimized)...[/cyan]")
-            whisper_model_name = load_key("whisper.model")
-            load_whisper_model(whisper_model_name)
+    if runtime in ("mlx", "local"):
+        # Qwen3-ASR is the single local backend (mlx-whisper was removed upstream).
+        from core.asr_backend.qwen_asr_local import transcribe_audio as ts
+        rprint("[cyan]🎤 Transcribing audio with local Qwen3-ASR + ForcedAligner (MLX)...[/cyan]")
     elif runtime == "elevenlabs":
         from core.asr_backend.elevenlabs_asr import transcribe_audio_elevenlabs as ts
         rprint("[cyan]🎤 Transcribing audio with ElevenLabs API...[/cyan]")
     else:
-        # Fallback to Qwen (upstream default) if specified runtime is missing or legacy
+        # Fallback to Qwen if specified runtime is missing or legacy
         from core.asr_backend.qwen_asr_local import transcribe_audio as ts
         rprint(f"[yellow]⚠️ Runtime '{runtime}' is no longer supported on this Mac-optimized version. Falling back to Qwen3-ASR...[/yellow]")
 
@@ -90,8 +84,8 @@ def transcribe(progress_callback=None):
             result = ts(_RAW_AUDIO_FILE, vocal_audio, start, end)
             check_cancel()
             # Qwen3-ASR has no speaker labels (upstream); attach them here so
-            # the qwen path keeps speaker_id like the MLX-Whisper backend did.
-            if backend == "qwen" and load_key_or("whisper.diarization", True):
+            # the Qwen path keeps speaker_id like the old MLX-Whisper backend.
+            if runtime in ("mlx", "local") and load_key_or("whisper.diarization", True):
                 from core.asr_backend.diarization import diarize_file_segments
                 result["segments"] = diarize_file_segments(
                     _RAW_AUDIO_FILE, float(start), result["segments"])

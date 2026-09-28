@@ -40,7 +40,6 @@ dependencies = [
     "scipy>=1.15",
 
     # Mac MLX ASR stack
-    "mlx-whisper",
     "mlx",
     "pyannote.audio>=4.0",
     "python-dotenv",

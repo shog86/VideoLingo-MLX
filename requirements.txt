@@ -38,7 +38,6 @@ pypinyin
 g2p-en
 xmltodict
 
-mlx-whisper
 mlx
 pyannote.audio>=4.0
 python-dotenv

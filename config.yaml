@@ -34,9 +34,8 @@ whisper:
   detected_language: 'en'
   # Whisper running mode ["mlx", "local", "cloud", "elevenlabs"]. mlx is HIGHLY recommended for Mac.
   runtime: 'mlx'
-  # Local ASR backend when runtime is mlx/local: "qwen" (default: Qwen3-ASR +
-  # Qwen3-ForcedAligner-0.6B, ported from upstream v3.1.0) or "mlx" (the previous
-  # mlx-whisper + pyannote path).
+  # Local ASR is always Qwen3-ASR + Qwen3-ForcedAligner (ported from upstream
+  # v3.1.0); the old MLX-Whisper backend and its dependency were removed.
   backend: 'qwen'
   # Qwen3-ASR size: "1.7b" (more accurate) or "0.6b" (faster, less memory)
   qwen_model: '1.7b'
