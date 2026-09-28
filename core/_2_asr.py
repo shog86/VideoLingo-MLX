@@ -89,6 +89,12 @@ def transcribe(progress_callback=None):
         else:
             result = ts(_RAW_AUDIO_FILE, vocal_audio, start, end)
             check_cancel()
+            # Qwen3-ASR has no speaker labels (upstream); attach them here so
+            # the qwen path keeps speaker_id like the MLX-Whisper backend did.
+            if backend == "qwen" and load_key_or("whisper.diarization", True):
+                from core.asr_backend.diarization import diarize_file_segments
+                result["segments"] = diarize_file_segments(
+                    _RAW_AUDIO_FILE, float(start), result["segments"])
             language = whisper["language"] if whisper["language"] != "auto" else result.get("language")
             if key:
                 cache.write_result(key, part, result, language)
