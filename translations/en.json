@@ -228,5 +228,15 @@
     "gen_align": "Aligning timestamps...",
     "gen_srt_written": "SRT files written, post-processing...",
     "gen_done": "Subtitle files ready",
-    "pause_before_translate_note": "pause_before_translate is ON: edit output/log/terminology.json before translating. Continuing with current terminology this time."
+    "pause_before_translate_note": "pause_before_translate is ON: edit output/log/terminology.json before translating. Continuing with current terminology this time.",
+    "Pause": "Pause",
+    "Resume": "Resume",
+    "Stop": "Stop",
+    "OK": "OK",
+    "Task completed!": "Task completed!",
+    "Task stopped": "Task stopped",
+    "Task error": "Task error",
+    "Paused": "Paused",
+    "Stopping...": "Stopping...",
+    "Running...": "Running..."
 }

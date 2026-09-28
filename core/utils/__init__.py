@@ -12,12 +12,14 @@ except ImportError:
 
 
 def check_cancel():
-    """Cooperative cancellation hook for long-running core loops.
+    """协作式取消钩子，供 core 内部的长循环调用。
 
-    In this MLX-optimized build the task runner is not present, so this is a
-    no-op. It is kept to stay API-compatible with upstream cancellation points.
+    转发到 :class:`core.task_runner.TaskRunner`：暂停时阻塞等待，停止时抛出
+    ``StopTask``。没有活动执行器时（命令行直接跑 core 脚本）是空操作。
+    这里用延迟导入避免与 core.utils 包初始化产生循环依赖。
     """
-    return
+    from core.task_runner import TaskRunner
+    TaskRunner.check_cancel()
 
 
 __all__ = ["ask_gpt", "except_handler", "check_file_exists", "load_key", "load_key_or", "update_key", "rprint", "get_joiner", "get_video_info", "get_video_resolution", "effective_max_sub_length", "build_ass_styles", "find_ffmpeg", "ensure_ffmpeg_in_path", "check_cancel"]

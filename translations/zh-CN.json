@@ -228,5 +228,15 @@
     "gen_align": "正在对齐时间轴…",
     "gen_srt_written": "SRT 已写入，后处理中…",
     "gen_done": "字幕文件已就绪",
-    "pause_before_translate_note": "⚠️ pause_before_translate 已开启：翻译前可去 output/log/terminology.json 编辑术语，本次将沿用当前术语继续。"
+    "pause_before_translate_note": "⚠️ pause_before_translate 已开启：翻译前可去 output/log/terminology.json 编辑术语，本次将沿用当前术语继续。",
+    "Pause": "暂停",
+    "Resume": "继续",
+    "Stop": "停止",
+    "OK": "好的",
+    "Task completed!": "任务完成！",
+    "Task stopped": "任务已停止",
+    "Task error": "任务出错",
+    "Paused": "已暂停",
+    "Stopping...": "正在停止…",
+    "Running...": "运行中…"
 }

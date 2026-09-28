@@ -2,6 +2,8 @@ import os
 from core.st_utils.imports_and_utils import *
 from core.utils.onekeycleanup import cleanup
 from core.utils import load_key
+from core.pipeline import get_steps
+from translations.translations import translate as t
 import shutil
 from functools import partial
 from rich.panel import Panel
@@ -15,46 +17,48 @@ OUTPUT_DIR = 'output'
 SAVE_DIR = 'batch/output'
 ERROR_OUTPUT_DIR = 'batch/output/ERROR'
 YTB_RESOLUTION_KEY = "ytb_resolution"
+INPUT_STEP_LABEL = "🎥 Processing input file"  # 批处理独有的输入准备步骤标签（非翻译 key）
+MAX_ATTEMPTS = 3  # 每个步骤的最大重试次数
 
 def process_video(file, dubbing=False, is_retry=False):
+    """批处理单个视频：复用 core.pipeline 的统一步骤定义，逐步骤带重试执行。
+
+    Args:
+        file: batch/input 下的文件名，或 HTTP(S) 视频/音频链接。
+        dubbing: 是否在字幕之后继续执行配音步骤。
+        is_retry: True 表示重试既有任务，保留 output/ 内容；否则先清空。
+    Returns:
+        (ok, error_step, error_message)：成功时 (True, "", "")。
+    """
     if not is_retry:
         prepare_output_folder(OUTPUT_DIR)
-    
-    text_steps = [
-        ("🎥 Processing input file", partial(process_input_file, file)),
-        ("🎙️ Transcribing with Whisper", partial(_2_asr.transcribe)),
-        ("✂️ Splitting sentences", split_sentences),
-        ("📝 Summarizing and translating", summarize_and_translate),
-        ("⚡ Processing and aligning subtitles", process_and_align_subtitles),
-        ("🎬 Merging subtitles to video", _7_sub_into_vid.merge_subtitles_to_video),
-    ]
-    
-    if dubbing:
-        dubbing_steps = [
-            ("🔊 Generating audio tasks", gen_audio_tasks),
-            ("🎵 Extracting reference audio", _9_refer_audio.extract_refer_audio_main),
-            ("🗣️ Generating audio", _10_gen_audio.gen_audio),
-            ("🔄 Merging full audio", _11_merge_audio.merge_full_audio),
-            ("🎞️ Merging dubbing to video", _12_dub_to_vid.merge_video_audio),
-        ]
-        text_steps.extend(dubbing_steps)
-    
+
+    # 输入准备是批处理独有的步骤；其余步骤与 UI / API 共用同一份定义，
+    # 避免步骤清单分叉（例如 gen_source_srt 之前只存在于 UI 侧）。
+    steps = [(INPUT_STEP_LABEL, partial(process_input_file, file))]
+    steps.extend(get_steps("all", dubbing=bool(dubbing), burn=True))
+
+    console.print(f"[cyan][batch] 构建执行计划：{len(steps)} 个步骤，dubbing={bool(dubbing)}[/cyan]")
     current_step = ""
-    for step_name, step_func in text_steps:
+    for label, step_func in steps:
+        # 输入准备用自带的 emoji 标签，pipeline 步骤的标签是翻译 key
+        step_name = label if label == INPUT_STEP_LABEL else t(label)
         current_step = step_name
-        for attempt in range(3):
+        for attempt in range(MAX_ATTEMPTS):
             try:
                 console.print(Panel(
                     f"[bold green]{step_name}[/]",
-                    subtitle=f"Attempt {attempt + 1}/3" if attempt > 0 else None,
+                    subtitle=f"Attempt {attempt + 1}/{MAX_ATTEMPTS}" if attempt > 0 else None,
                     border_style="blue"
                 ))
                 result = step_func()
                 if result is not None:
                     globals().update(result)
+                console.print(f"[cyan][batch] 步骤完成：{step_name}[/cyan]")
                 break
             except Exception as e:
-                if attempt == 2:
+                console.print(f"[yellow][batch] 步骤失败（第 {attempt + 1}/{MAX_ATTEMPTS} 次）：{step_name} - {e}[/yellow]")
+                if attempt == MAX_ATTEMPTS - 1:
                     error_panel = Panel(
                         f"[bold red]Error in step '{current_step}':[/]\n{str(e)}",
                         border_style="red"
@@ -66,17 +70,19 @@ def process_video(file, dubbing=False, is_retry=False):
                     f"[yellow]Attempt {attempt + 1} failed. Retrying...[/]",
                     border_style="yellow"
                 ))
-    
+
     console.print(Panel("[bold green]All steps completed successfully! 🎉[/]", border_style="green"))
     cleanup(SAVE_DIR)
     return True, "", ""
 
 def prepare_output_folder(output_folder):
+    """清空并重建输出目录（非重试任务开始前调用）。"""
     if os.path.exists(output_folder):
         shutil.rmtree(output_folder)
     os.makedirs(output_folder)
 
 def process_input_file(file):
+    """把批处理输入准备到 output/：支持 URL 下载与本地文件拷贝。"""
     if file.startswith('http'):
         _1_ytdlp.download_video_ytdlp(file, resolution=load_key(YTB_RESOLUTION_KEY))
         video_file = _1_ytdlp.find_video_files()
@@ -85,20 +91,5 @@ def process_input_file(file):
         output_file = os.path.join(OUTPUT_DIR, file)
         shutil.copy(input_file, output_file)
         video_file = output_file
+    console.print(f"[cyan][batch] 输入已准备：{video_file}[/cyan]")
     return {'video_file': video_file}
-
-def split_sentences():
-    _3_1_split_nlp.split_by_spacy()
-    _3_2_split_meaning.split_sentences_by_meaning()
-
-def summarize_and_translate():
-    _4_1_summarize.get_summary()
-    _4_2_translate.translate_all()
-
-def process_and_align_subtitles():
-    _5_split_sub.split_for_sub_main()
-    _6_gen_sub.align_timestamp_main()
-
-def gen_audio_tasks():
-    _8_1_audio_task.gen_audio_task_main()
-    _8_2_dub_chunks.gen_dub_chunks()

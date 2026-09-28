@@ -228,5 +228,15 @@
     "gen_align": "Alignement des timecodes...",
     "gen_srt_written": "SRT écrits, post-traitement...",
     "gen_done": "Fichiers de sous-titres prêts",
-    "pause_before_translate_note": "⚠️ pause_before_translate activé : modifiez output/log/terminology.json avant de traduire. Cette fois, on continue avec la terminologie actuelle."
+    "pause_before_translate_note": "⚠️ pause_before_translate activé : modifiez output/log/terminology.json avant de traduire. Cette fois, on continue avec la terminologie actuelle.",
+    "Pause": "Pause",
+    "Resume": "Reprendre",
+    "Stop": "Arrêter",
+    "OK": "OK",
+    "Task completed!": "Tâche terminée !",
+    "Task stopped": "Tâche arrêtée",
+    "Task error": "Erreur de tâche",
+    "Paused": "En pause",
+    "Stopping...": "Arrêt en cours…",
+    "Running...": "En cours…"
 }

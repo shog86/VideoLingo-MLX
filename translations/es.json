@@ -228,5 +228,15 @@
     "gen_align": "Alineando marcas de tiempo...",
     "gen_srt_written": "SRT escritos, posprocesando...",
     "gen_done": "Archivos de subtítulos listos",
-    "pause_before_translate_note": "⚠️ pause_before_translate está activado: edita output/log/terminology.json antes de traducir. Esta vez se continúa con la terminología actual."
+    "pause_before_translate_note": "⚠️ pause_before_translate está activado: edita output/log/terminology.json antes de traducir. Esta vez se continúa con la terminología actual.",
+    "Pause": "Pausar",
+    "Resume": "Reanudar",
+    "Stop": "Detener",
+    "OK": "OK",
+    "Task completed!": "¡Tarea completada!",
+    "Task stopped": "Tarea detenida",
+    "Task error": "Error de tarea",
+    "Paused": "En pausa",
+    "Stopping...": "Deteniendo…",
+    "Running...": "En ejecución…"
 }

@@ -21,6 +21,9 @@ dependencies = [
     "requests==2.32.3",
     "spacy>=3.8.2",
     "streamlit==1.38.0",
+    # Local HTTP API (api.py): FastAPI app served by uvicorn.
+    "fastapi",
+    "uvicorn",
     "yt-dlp",
     "json-repair",
     "ruamel.yaml",
