@@ -34,6 +34,16 @@ whisper:
   detected_language: 'en'
   # Whisper running mode ["mlx", "local", "cloud", "elevenlabs"]. mlx is HIGHLY recommended for Mac.
   runtime: 'mlx'
+  # Local ASR is always Qwen3-ASR + Qwen3-ForcedAligner (ported from upstream
+  # v3.1.0); the old MLX-Whisper backend and its dependency were removed.
+  backend: 'qwen'
+  # Qwen3-ASR size: "1.7b" (more accurate) or "0.6b" (faster, less memory)
+  qwen_model: '1.7b'
+  # *Qwen engine: "auto" (MLX on Apple Silicon; transformers elsewhere), "mlx" or "transformers"
+  qwen_engine: 'auto'
+  # Attach speaker_id to ASR segments via pyannote diarization (Qwen backend).
+  # The MLX-Whisper backend always diarizes; this keeps speakers on Qwen too.
+  diarization: true
   # 302.ai API key
   whisperX_302_api_key: 'your_302_api_key'
   # ElevenLabs API key (experimental)

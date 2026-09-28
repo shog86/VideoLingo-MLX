@@ -38,28 +38,47 @@ def _find_ffmpeg():
     return None
 
 def check_ffmpeg():
+    """Prepare FFmpeg/ffprobe automatically via static-ffmpeg (app-owned binaries).
+
+    Follows upstream v3.1.0: no system install / PATH setup needed. On success
+    the bundled binaries dir is prepended to PATH so children (pydub, yt-dlp,
+    ffmpeg burns) resolve ffmpeg/ffprobe. Falls back to the Homebrew detection
+    in `_find_ffmpeg` if the bundled fetch is unavailable.
+    """
     from rich.console import Console
     from rich.panel import Panel
     from translations.translations import translate as t
     console = Console()
 
+    try:
+        from runtime_libraries import configure_ffmpeg, validate_ffmpeg
+        configure_ffmpeg(download=True, required=True)
+        version = validate_ffmpeg()
+        console.print(Panel(f"✅ FFmpeg/ffprobe ready: {version}", style="green"))
+        return True
+    except Exception as exc:
+        console.print(Panel(
+            f"{t('❌ Automatic FFmpeg setup failed:')} {exc}\n\n"
+            f"{t('💡 Check your connection and rerun')} [bold cyan]bash run_installer.sh[/bold cyan]",
+            style="yellow"
+        ))
+
+    # Fallback: a system (Homebrew) ffmpeg already on disk.
     found = _find_ffmpeg()
     if found:
         # Make sure child processes (pydub, streamlit launch below) can see it
         bin_dir = os.path.dirname(found)
         if bin_dir and bin_dir not in os.environ.get("PATH", ""):
             os.environ["PATH"] = bin_dir + os.pathsep + os.environ.get("PATH", "")
-        console.print(Panel(t("✅ FFmpeg is already installed") + f" ({found})", style="green"))
+        console.print(Panel(t("✅ FFmpeg is already installed (system)") + f" ({found})", style="green"))
         return True
 
     install_cmd = "brew install ffmpeg"
     extra_note = t("Install Homebrew first (https://brew.sh/)")
-
     console.print(Panel.fit(
         t("❌ FFmpeg not found\n\n") +
         f"{t('🛠️ Install using:')}\n[bold cyan]{install_cmd}[/bold cyan]\n\n" +
-        f"{t('💡 Note:')}\n{extra_note}\n\n" +
-        f"{t('🔄 After installing FFmpeg, please run this installer again:')}\n[bold cyan]bash run_installer.sh[/bold cyan]",
+        f"{t('💡 Note:')}\n{extra_note}",
         style="red"
     ))
     raise SystemExit(t("FFmpeg is required. Please install it and run the installer again."))
@@ -208,7 +227,6 @@ def main():
         download_script = """
 import os, sys
 import numpy as np
-import mlx_whisper
 import torch
 from pyannote.audio import Pipeline
 from core.utils.config_utils import load_key
@@ -217,16 +235,21 @@ from core.utils.config_utils import load_key
 MODEL_DIR = os.path.join(os.getcwd(), load_key("model_dir"))
 os.environ["HF_HOME"] = MODEL_DIR
 
-whisper_model = load_key("whisper.model")
 token = load_key("api.huggingface_token")
 
-print(f"Checking MLX-Whisper model: {whisper_model}")
+# Qwen3-ASR + ForcedAligner (default local ASR backend)
 try:
-    # Trigger download with a tiny silent segment
-    mlx_whisper.transcribe(np.zeros(16000), path_or_hf_repo=whisper_model)
-    print("✅ MLX-Whisper model ready.")
+    from mlx_audio.stt.utils import load_model as qwen_load
+    size = load_key("whisper.qwen_model") or "1.7b"
+    asr_repo = "mlx-community/Qwen3-ASR-" + size.upper() + "-8bit"
+    align_repo = "mlx-community/Qwen3-ForcedAligner-0.6B-8bit"
+    print(f"Pre-downloading Qwen3-ASR: {asr_repo}")
+    qwen_load(asr_repo)
+    print(f"Pre-downloading Qwen3-ForcedAligner: {align_repo}")
+    qwen_load(align_repo)
+    print("✅ Qwen3-ASR + ForcedAligner ready.")
 except Exception as e:
-    print(f"⚠️ MLX-Whisper download note: {e}")
+    print(f"⚠️ Qwen3-ASR download note: {e}")
 
 print("Checking Pyannote models...")
 try:

@@ -20,7 +20,7 @@ def cache_key(media_file, whisper, demucs, raw_audio=None):
             check_cancel()
             digest.update(block)
     packages = {}
-    for name in ("mlx-whisper", "pyannote.audio", "demucs"):
+    for name in ("mlx-audio", "pyannote.audio", "demucs"):
         try:
             packages[name] = version(name)
         except PackageNotFoundError:

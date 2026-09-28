@@ -13,6 +13,13 @@ for _bin in ("/opt/homebrew/bin", "/usr/local/bin"):
     if os.path.isdir(_bin) and _bin not in os.environ.get("PATH", "").split(os.pathsep):
         os.environ["PATH"] = _bin + os.pathsep + os.environ.get("PATH", "")
 
+# Managed FFmpeg/ffprobe (static-ffmpeg, fetched by install.py) takes priority:
+# it prepends the bundled binaries dir to PATH so every later bare-`ffmpeg`
+# subprocess (yt-dlp, pydub, burns) resolves. Missing runtime (direct source
+# launch before install) is non-fatal here; install run FFmpeg prepare it.
+from runtime_libraries import configure_ffmpeg
+configure_ffmpeg(required=False)
+
 from core.st_utils.imports_and_utils import *
 from core.st_utils.ui_log import UILog
 from core.st_utils.i18n_widgets import section_expander
