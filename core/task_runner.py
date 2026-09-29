@@ -37,6 +37,8 @@ class TaskRunner:
     _stop_event: threading.Event = field(default_factory=threading.Event)
     _thread: threading.Thread | None = None
     _steps: list = field(default_factory=list)
+    # 步骤回调上报的整体进度（0.0~1.0）；为 None 时退化为按步骤数估算。
+    _progress_pct: float | None = field(default=None, repr=False)
 
     # 类级别的“当前执行器”指针，使 core 内部函数无需持有引用即可调用
     # TaskRunner.check_cancel()。该指针只在 start() 启动的后台线程里有意义。
@@ -79,6 +81,7 @@ class TaskRunner:
         self.current_label = ""
         self.error_msg = ""
         self.pause_message = ""
+        self._progress_pct = None
         self.state = "running"
 
         self._pause_event.set()
@@ -118,7 +121,16 @@ class TaskRunner:
             self.current_label = ""
             self.error_msg = ""
             self.pause_message = ""
+            self._progress_pct = None
             self._steps = []
+
+    def set_progress(self, value: float) -> None:
+        """记录 pipeline 步骤回调上报的整体进度（0.0~1.0），供 /status 等读取。
+
+        由步骤内部的 progress_callback 调用（工作线程），把流水线归一的整体
+        进度写进执行器，避免进度只按步骤数粗糙估算。
+        """
+        self._progress_pct = max(0.0, min(1.0, value))
 
     @property
     def is_active(self) -> bool:
@@ -130,10 +142,18 @@ class TaskRunner:
 
     @property
     def progress(self) -> float:
-        """整体进度，取值 0.0 ~ 1.0。"""
+        """整体进度，取值 0.0 ~ 1.0。
+
+        优先返回流水线按权重归一的回调进度；若步骤没有回报（例如检查点或
+        纯命令步骤），退化为按步骤数估算。任务完成后一律为 1.0。
+        """
+        if self.state == "completed":
+            return 1.0
+        if self._progress_pct is not None:
+            return self._progress_pct
         if self.total_steps == 0:
             return 0.0
-        return 1.0 if self.state == "completed" else max(self.current_step, 0) / self.total_steps
+        return max(self.current_step, 0) / self.total_steps
 
     # ------ 内部实现 ------
 

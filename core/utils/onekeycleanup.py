@@ -1,15 +1,21 @@
 import os
 import glob
-from core._1_ytdlp import find_video_files
+from core._1_ytdlp import find_video_files, find_audio_files
 import shutil
 
-def cleanup(history_dir="history"):
-    # Get video file name
-    video_file = find_video_files()
-    video_name = video_file.split("/")[1]
-    video_name = os.path.splitext(video_name)[0]
-    video_name = sanitize_filename(video_name)
-    
+def cleanup(history_dir="history", media_file=None):
+    """把 output/ 的产品归档到 history/<媒体名>/。
+
+    Args:
+        history_dir: 归档根目录。
+        media_file: 用于命名归档目录的媒体路径；缺省时按视频查找，视频不存在
+            时回退到音频（音频输入没有视频文件，find_video_files 会抛错）。
+            音频 fallback 排除了生成的配音产物，避免误用 dub.mp3 命名。
+    """
+    if media_file is None:
+        media_file = _find_media_for_archive()
+    video_name = _media_stem(media_file)
+
     # Create required folders
     os.makedirs(history_dir, exist_ok=True)
     video_history_dir = os.path.join(history_dir, video_name)
@@ -38,6 +44,24 @@ def cleanup(history_dir="history"):
         os.rmdir("output")
     except OSError:
         pass  # Ignore errors when deleting directories
+
+
+def _find_media_for_archive():
+    """取一个用于命名归档目录的媒体路径；视频优先，音频兜底。"""
+    try:
+        return find_video_files()
+    except Exception:
+        try:
+            return find_audio_files()
+        except Exception:
+            return os.path.join("output", "unknown")
+
+
+def _media_stem(media_file):
+    """从媒体路径取去掉扩展名的基准名，用于归档目录命名。"""
+    name = media_file.replace("\\", "/")
+    name = os.path.basename(name)
+    return sanitize_filename(os.path.splitext(name)[0])
 
 def move_file(src, dst):
     try:
