@@ -47,14 +47,18 @@ def cleanup(history_dir="history", media_file=None):
 
 
 def _find_media_for_archive():
-    """取一个用于命名归档目录的媒体路径；视频优先，音频兜底。"""
+    """取一个用于命名归档目录的媒体路径；视频优先，音频兜底。
+
+    两者都找不到时（例如云端产物已无源文件），回退到一个带随机后缀的
+    唯一名，避免多次兜底归档都落到同一个 history/unknown 而互相覆盖。
+    """
     try:
         return find_video_files()
     except Exception:
         try:
             return find_audio_files()
         except Exception:
-            return os.path.join("output", "unknown")
+            return os.path.join("output", f"unknown_{os.urandom(8).hex()}")
 
 
 def _media_stem(media_file):
