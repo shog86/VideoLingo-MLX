@@ -228,5 +228,15 @@
     "gen_align": "Выравнивание таймингов...",
     "gen_srt_written": "SRT записаны, постобработка...",
     "gen_done": "Файлы субтитров готовы",
-    "pause_before_translate_note": "⚠️ pause_before_translate включён: отредактируйте output/log/terminology.json перед переводом. В этот раз продолжаем с текущей терминологией."
+    "pause_before_translate_note": "⚠️ pause_before_translate включён: отредактируйте output/log/terminology.json перед переводом. В этот раз продолжаем с текущей терминологией.",
+    "Pause": "Пауза",
+    "Resume": "Продолжить",
+    "Stop": "Стоп",
+    "OK": "ОК",
+    "Task completed!": "Задача выполнена!",
+    "Task stopped": "Задача остановлена",
+    "Task error": "Ошибка задачи",
+    "Paused": "Пауза",
+    "Stopping...": "Остановка…",
+    "Running...": "Выполняется…"
 }

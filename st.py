@@ -1,5 +1,5 @@
 import streamlit as st
-import os, sys, html
+import os, sys, html, io, threading
 from contextlib import redirect_stdout, redirect_stderr
 from datetime import datetime
 
@@ -21,10 +21,11 @@ from runtime_libraries import configure_ffmpeg
 configure_ffmpeg(required=False)
 
 from core.st_utils.imports_and_utils import *
-from core.st_utils.ui_log import UILog
 from core.st_utils.i18n_widgets import section_expander
 from core.st_utils.theme import THEME_CSS
 from core import *
+from core.task_runner import TaskRunner
+from core.pipeline import get_steps, burn_subtitles
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 os.environ['PATH'] += os.pathsep + current_dir
@@ -134,68 +135,142 @@ def _stored_log_box(session_key):
         with st.expander(t("run_log"), expanded=False):
             st.code("\n".join(lines[-300:]), language="text")
 
-def _scaled_cb(progress_callback, lo, hi):
-    """Map a sub-step's 0-100 percent into the overall [lo, hi] window."""
+# ── 后台任务基础设施（工作线程写状态，UI 用 fragment 轮询读） ──────────────
+# 工作线程不能安全访问 st.session_state，所以进度与日志放在模块级字典里。
+_RUN_STATE = {}
+_RUN_LOCK = threading.Lock()
+
+
+class _RunLog(io.TextIOBase):
+    """把工作线程里 core 的输出按行收集到列表，供 UI 轮询展示。"""
+
+    def __init__(self, state):
+        self._state = state
+        self._buf = ""
+
+    def write(self, text):
+        if not text:
+            return 0
+        self._buf += text.replace("\r", "\n")
+        while "\n" in self._buf:
+            line, self._buf = self._buf.split("\n", 1)
+            if line.strip():
+                with _RUN_LOCK:
+                    self._state["log"].append(line)
+        return len(text)
+
+    def flush(self):
+        pass
+
+
+def _run_state(key):
+    """取得（必要时创建）某个任务 key 的进度/日志状态。"""
+    with _RUN_LOCK:
+        return _RUN_STATE.setdefault(key, {"detail": "", "percent": None, "log": []})
+
+
+def _get_runner(key):
+    """从 session_state 取任务执行器；每个阶段一个独立实例。"""
+    if key not in st.session_state:
+        st.session_state[key] = TaskRunner()
+    return st.session_state[key]
+
+
+def _progress_cb(key):
+    """构造进度回调：把 core 的分步进度写入该 key 的状态字典。"""
+    state = _run_state(key)
+
     def _cb(step=None, detail=None, percent=None):
-        if percent is None:
-            progress_callback(step=step, detail=detail, percent=None)
-        else:
-            try:
-                p = max(0.0, min(100.0, float(percent)))
-            except (TypeError, ValueError):
-                progress_callback(step=step, detail=detail, percent=None)
-                return
-            progress_callback(step=step, detail=detail,
-                              percent=lo + (hi - lo) * p / 100.0)
+        if detail:
+            state["detail"] = detail
+        if isinstance(percent, (int, float)):
+            state["percent"] = float(percent)
+
     return _cb
 
 
-def phase1_transcribe(log, progress_callback=None):
-    """Step 2 (Transcribe): Transcription + NLP split + meaning split + summarize + translate + generate SRTs.
+def _start_task(key, steps, log_title):
+    """在后台线程启动任务：重定向 core 输出到日志，再交给 TaskRunner 执行。"""
+    state = _run_state(key)
+    state["detail"] = log_title
+    state["percent"] = None
+    state["log"].clear()
+    log = _RunLog(state)
 
-    Overall progress is weighted across sub-steps so the CTA pill shows
-    fine-grained percent instead of jumping coarsely:
-      ASR 0-55 → NLP 55-60 → meaning 60-70 → src.srt 70-73 →
-      summarize 73-78 → translate 78-90 → split 90-96 → gen 96-100.
+    def _wrap(label, func):
+        def _run():
+            log.write(f"=== {t(label)} ===\n")
+            with redirect_stdout(log), redirect_stderr(log):
+                func()
+        return (label, _run)
+
+    _get_runner(key).start([_wrap(label, fn) for label, fn in steps])
+
+
+def _pill(text):
+    """渲染仿主按钮的深色进度条（markdown，运行中可自由重绘）。"""
+    return (f"<div style='background:#1c1917;color:#fff;border-radius:10px;"
+            f"padding:0.55em 1em;text-align:center;font-size:14px;"
+            f"font-weight:600;'>{html.escape(text)}</div>")
+
+
+@st.fragment(run_every=1)
+def _task_panel(key):
+    """轮询后台任务状态，渲染进度、暂停/继续/停止按钮与运行日志。
+
+    任务本身跑在后台线程，这里每秒重绘一次（只读状态），因此不会重现历史上
+    “长时间任务 + 碎片 Stop”导致的 RuntimeError。
     """
-    cb = progress_callback or log.progress_callback
-    with redirect_stdout(log), redirect_stderr(log):
-        log.log(f"=== {t('section_transcribe')} ===")
-        _2_asr.transcribe(progress_callback=_scaled_cb(cb, 0, 55))
+    runner = _get_runner(key)
+    if runner.state == "idle":
+        return
+    state = _run_state(key)
+    detail = state.get("detail") or ""
+    percent = state.get("percent")
+    pct = f" {percent:.0f}%" if isinstance(percent, (int, float)) else ""
 
-        log.log(t("ph_nlp"))
-        _3_1_split_nlp.split_by_spacy(
-            progress_callback=_scaled_cb(cb, 55, 60))
+    if runner.state in ("running", "paused", "stopping"):
+        if runner.state == "paused":
+            head = f"⏸️ {t('Paused')}"
+        elif runner.state == "stopping":
+            head = f"⏹️ {t('Stopping...')}"
+        else:
+            head = f"⏳ {t('Running...')}"
+        st.markdown(_pill(f"{head} {detail}{pct}".strip()), unsafe_allow_html=True)
+        st.progress(min(max(runner.progress, 0.0), 1.0))
+        if runner.pause_message:
+            st.info(t(runner.pause_message))
+        col1, col2 = st.columns(2)
+        with col1:
+            if runner.state == "paused":
+                if st.button(f"▶️ {t('Resume')}", key=f"{key}_resume", use_container_width=True):
+                    runner.resume()
+                    st.rerun()
+            elif st.button(f"⏸️ {t('Pause')}", key=f"{key}_pause", use_container_width=True,
+                           disabled=runner.state != "running"):
+                runner.pause()
+                st.rerun()
+        with col2:
+            if st.button(f"⏹️ {t('Stop')}", key=f"{key}_stop", use_container_width=True, type="primary"):
+                runner.stop()
+                st.rerun()
+        with st.expander(t("run_log"), expanded=False):
+            st.code("\n".join(state.get("log", [])[-300:]), language="text")
+    elif runner.state == "completed":
+        st.session_state[f"{key}_log"] = list(state.get("log", []))
+        runner.reset()
+        st.rerun(scope="app")
+    elif runner.state == "stopped":
+        st.warning(t("Task stopped"))
+        if st.button(t("OK"), key=f"{key}_ack_stop", use_container_width=True):
+            runner.reset()
+            st.rerun(scope="app")
+    elif runner.state == "error":
+        st.error(f"{t('Task error')}: {runner.error_msg}")
+        if st.button(t("OK"), key=f"{key}_ack_error", use_container_width=True):
+            runner.reset()
+            st.rerun(scope="app")
 
-        log.log(t("ph_meaning"))
-        _3_2_split_meaning.split_sentences_by_meaning(
-            progress_callback=_scaled_cb(cb, 60, 70))
-
-        log.log(t("ph_src_srt"))
-        _gen_source_srt.gen_source_srt(
-            progress_callback=_scaled_cb(cb, 70, 73))
-
-        log.log(t("ph_sum"))
-        _4_1_summarize.get_summary(
-            progress_callback=_scaled_cb(cb, 73, 78))
-
-        if load_key("pause_before_translate"):
-            log.log(t("pause_before_translate_note"))
-
-        log.log(t("ph_trans"))
-        _4_2_translate.translate_all(
-            progress_callback=_scaled_cb(cb, 78, 90))
-
-        log.log(t("ph_split"))
-        _5_split_sub.split_for_sub_main(
-            progress_callback=_scaled_cb(cb, 90, 96))
-
-        log.log(t("ph_gen"))
-        _6_gen_sub.align_timestamp_main(
-            progress_callback=_scaled_cb(cb, 96, 100))
-
-        log.log(f"=== {t('phase1_done_summary')} ===")
-    log.flush()
 
 def phase3_burn(slot, tracks):
     """Step 4 (Burn): burn one subtitle file. Progress renders where the CTA was
@@ -206,11 +281,10 @@ def phase3_burn(slot, tracks):
         if detail:
             cta_progress(slot, detail)
     cta_progress(slot, t("phase3_starting"))
-    _7_sub_into_vid.merge_subtitles_to_video(tracks=tracks, log_callback=_cb)
+    burn_subtitles(tracks=tracks, log_callback=_cb)
 
-# NOTE: intentionally NOT @st.fragment (see download_video_section.py):
-# long transcribe runs + Stop/Delete with fragments raised
-# "RuntimeError: Could not find fragment with id ...".
+# 长时间任务现在跑在后台线程（见 _start_task / _task_panel），页面只保留一个
+# 每秒轮询的 fragment 做进度与控制，因此不再需要历史上“禁止 fragment”的规避。
 def text_processing_section():
     with st.container():
         # ── Step 2: Transcribe ──
@@ -219,45 +293,22 @@ def text_processing_section():
         phase1_done = os.path.exists(SRC_SRT) and os.path.exists(TRANS_SRT)
 
         if not phase1_done:
-            slot1 = st.empty()
+            runner = _get_runner("phase1")
             has_media = _has_media()
             if not has_media:
                 st.caption(t("need_media_first"))
-            if slot1.button(t("start_transcribe"), key="phase1_button",
-                            use_container_width=True, type="primary",
-                            disabled=not has_media):
-                st.session_state["running_phase1"] = True
-                st.session_state.pop("phase1_log", None)
-                # Live log stays collapsed by default (and tees to the
-                # terminal) — the page only keeps the progress pill on top.
-                log_expander = st.expander(t("run_log"), expanded=False)
-                log = UILog(log_expander.empty(), title=f"🚀 {t('start_transcribe')}…")
-
-                def _cb1(step=None, detail=None, percent=None):
-                    if detail:
-                        pct = f" {percent:.0f}%" if isinstance(percent, (int, float)) else ""
-                        cta_progress(slot1, f"{detail}{pct}")
-                    log.progress_callback(step, detail, percent)
-
-                try:
-                    phase1_transcribe(log, progress_callback=_cb1)
-                except BaseException as e:
-                    # Streamlit's Stop button interrupts the run from outside
-                    # (not a normal Exception), so reset the flag and keep the
-                    # partial log instead of leaving the page stuck/broken.
-                    from streamlit.runtime.scriptrunner.script_runner import StopException, RerunException
-                    st.session_state["phase1_log"] = list(log.lines)
-                    st.session_state["running_phase1"] = False
-                    if isinstance(e, (StopException, RerunException)):
-                        raise
-                    log.log(f"❌ {t('section_transcribe')} failed: {e}")
-                    log.flush()
-                    st.session_state["phase1_log"] = list(log.lines)
-                    st.error(f"{t('section_transcribe')} failed: {e}")
-                else:
-                    st.session_state["phase1_log"] = list(log.lines)
-                    st.session_state["running_phase1"] = False
-                    st.rerun(scope="app")
+            if runner.state == "idle":
+                if st.button(t("start_transcribe"), key="phase1_button",
+                             use_container_width=True, type="primary",
+                             disabled=not has_media):
+                    st.session_state.pop("phase1_log", None)
+                    _start_task("phase1",
+                                get_steps("subtitles", progress_callback=_progress_cb("phase1")),
+                                t("start_transcribe"))
+                    st.rerun()
+            else:
+                # 后台任务在独立线程执行，这里轮询进度并渲染暂停/停止控制
+                _task_panel("phase1")
         else:
             st.success(f"{t('phase1_done_summary')} · {len([p for p in ALL_SRTS if os.path.exists(p)])} SRT")
             with section_expander(t("subtitle_files"), "phase1_files", default=False):
@@ -433,10 +484,18 @@ def audio_processing_section():
             4. {t("Merge final audio into video")}
         """, unsafe_allow_html=True)
         if not os.path.exists(DUB_VIDEO):
-            if st.button(t("Start Audio Processing"), key="audio_processing_button",
-                         use_container_width=True, type="primary"):
-                process_audio()
-                st.rerun()
+            runner = _get_runner("dubbing")
+            if runner.state == "idle":
+                if st.button(t("Start Audio Processing"), key="audio_processing_button",
+                             use_container_width=True, type="primary"):
+                    _start_task("dubbing",
+                                get_steps("dubbing", progress_callback=_progress_cb("dubbing")),
+                                t("Start Audio Processing"))
+                    st.rerun()
+            else:
+                # 后台任务在独立线程执行，这里轮询进度并渲染暂停/停止控制
+                _task_panel("dubbing")
+                _stored_log_box("dubbing_log")
         else:
             st.success(t("Audio processing is complete! You can check the audio files in the `output` folder."))
             if load_key("burn_subtitles"):
@@ -447,22 +506,7 @@ def audio_processing_section():
             if st.button(t("Archive to 'history'"), key="cleanup_in_audio_processing"):
                 cleanup()
                 st.rerun()
-
-def process_audio():
-    with st.spinner(t("Generate audio tasks")): 
-        _8_1_audio_task.gen_audio_task_main()
-        _8_2_dub_chunks.gen_dub_chunks()
-    with st.spinner(t("Extract refer audio")):
-        _9_refer_audio.extract_refer_audio_main()
-    with st.spinner(t("Generate all audio")):
-        _10_gen_audio.gen_audio()
-    with st.spinner(t("Merge full audio")):
-        _11_merge_audio.merge_full_audio()
-    with st.spinner(t("Merge dubbing to the video")):
-        _12_dub_to_vid.merge_video_audio()
-    
-    st.success(t("Audio processing complete! 🎇"))
-    st.balloons()
+            _stored_log_box("dubbing_log")
 
 def main():
     logo_col, _ = st.columns([1,1])

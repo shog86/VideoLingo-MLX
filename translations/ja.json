@@ -228,5 +228,15 @@
     "gen_align": "タイムスタンプを調整中…",
     "gen_srt_written": "SRTを書き出し、後処理中…",
     "gen_done": "字幕ファイルの準備ができました",
-    "pause_before_translate_note": "⚠️ pause_before_translateがONです：翻訳前に output/log/terminology.json を編集してください。今回は現在の用語で続行します。"
+    "pause_before_translate_note": "⚠️ pause_before_translateがONです：翻訳前に output/log/terminology.json を編集してください。今回は現在の用語で続行します。",
+    "Pause": "一時停止",
+    "Resume": "再開",
+    "Stop": "停止",
+    "OK": "OK",
+    "Task completed!": "タスク完了！",
+    "Task stopped": "タスクを停止しました",
+    "Task error": "タスクエラー",
+    "Paused": "一時停止中",
+    "Stopping...": "停止中…",
+    "Running...": "実行中…"
 }

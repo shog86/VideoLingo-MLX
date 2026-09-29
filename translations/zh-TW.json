@@ -224,5 +224,15 @@
     "gen_align": "正在對齊時間軸…",
     "gen_srt_written": "SRT 已寫入，後處理中…",
     "gen_done": "字幕檔已就緒",
-    "pause_before_translate_note": "⚠️ pause_before_translate 已開啟：翻譯前可至 output/log/terminology.json 編輯術語，本次將沿用目前術語繼續。"
+    "pause_before_translate_note": "⚠️ pause_before_translate 已開啟：翻譯前可至 output/log/terminology.json 編輯術語，本次將沿用目前術語繼續。",
+    "Pause": "暫停",
+    "Resume": "繼續",
+    "Stop": "停止",
+    "OK": "好的",
+    "Task completed!": "任務完成！",
+    "Task stopped": "任務已停止",
+    "Task error": "任務出錯",
+    "Paused": "已暫停",
+    "Stopping...": "正在停止…",
+    "Running...": "執行中…"
 }
