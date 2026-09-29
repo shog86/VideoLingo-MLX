@@ -63,6 +63,16 @@ def archive_output():
         raise RuntimeError("Some output files could not be archived; inspect output/ before retrying.")
 
 
+def _api_progress_cb(step=None, detail=None, percent=None):
+    """把 pipeline 归一化后的整体 0-100 进度写入 runner，供 /status 读取。
+
+    没有回报百分比的调用（如纯提示文字）会忽略，保持上一次的整体进度，
+    避免覆盖已上报的精确进度。
+    """
+    if isinstance(percent, (int, float)):
+        runner.set_progress(float(percent) / 100.0)
+
+
 def prepare_input(source: str, existing: str):
     """把外部输入（URL 或本地文件）准备到 output/ 并写入 manifest。"""
     from core._1_ytdlp import (download_video_ytdlp, write_input_manifest,
@@ -133,7 +143,8 @@ def run(request: RunRequest):
         if request.source_language is not None:
             update_key("whisper.language", request.source_language)
         burn = bool(load_key("burn_subtitles")) and request.stage in {"subtitles", "all"}
-        runner.start(get_steps(request.stage, dubbing=request.dubbing, burn=burn))
+        runner.start(get_steps(request.stage, dubbing=request.dubbing, burn=burn,
+                               progress_callback=_api_progress_cb))
         return {"accepted": True}
 
 
